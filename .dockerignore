@@ -11,6 +11,9 @@ public/build
 .DS_Store
 .env.local
 .env.*.local
-Logo*.jpeg
+# Raw source images live in assets/images/ — they are processed by Vite
+# (hashed, optimized) at build time, so we don't need them in the image
+# build context. They reach the container only through the dev bind mount.
+assets/images
 INFRASTRUCTURE_PLAN.md
 README.md

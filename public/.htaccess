@@ -37,5 +37,7 @@ RewriteRule ^ index.php [L]
     # Disable cross-site scripting filter.
     Header set X-XSS-Protection "1; mode=block"
     # Force some security headers.
-    Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+    # HSTS is intentionally disabled until SSL/TLS is configured. Re-enable
+    # (and decide on the `preload` directive) once HTTPS is in place.
+    # Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
 </IfModule>

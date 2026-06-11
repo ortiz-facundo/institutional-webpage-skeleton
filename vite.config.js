@@ -9,7 +9,6 @@ export default defineConfig({
             viteDevServer: {
                 host: '0.0.0.0',
                 port: 5173,
-                strictPort: true,
             },
             stimulus: false,
             refresh: ['templates/**/*.twig'],

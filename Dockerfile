@@ -20,7 +20,6 @@ RUN set -eux; \
         intl \
         opcache \
         pdo_pgsql \
-        pdo_pgsql \
         zip; \
     pecl install apcu; \
     docker-php-ext-enable apcu
