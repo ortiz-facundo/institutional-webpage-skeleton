@@ -1,0 +1,16 @@
+.git
+.github
+.idea
+.vscode
+.opencode
+node_modules
+vendor
+var
+public/build
+*.log
+.DS_Store
+.env.local
+.env.*.local
+Logo*.jpeg
+INFRASTRUCTURE_PLAN.md
+README.md

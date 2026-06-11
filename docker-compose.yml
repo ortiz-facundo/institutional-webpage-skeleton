@@ -1,0 +1,48 @@
+name: nova-argentum
+
+services:
+  php:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: nova-argentum-php
+    ports:
+      - "8000:80"
+    volumes:
+      - ./:/var/www/html
+    depends_on:
+      database:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: "postgresql://app:!ChangeMe!@database:5432/app?serverVersion=16&charset=utf8"
+      APP_ENV: dev
+      APP_DEBUG: 1
+
+  database:
+    image: postgres:16-alpine
+    container_name: nova-argentum-db
+    environment:
+      POSTGRES_DB: app
+      POSTGRES_USER: app
+      POSTGRES_PASSWORD: "!ChangeMe!"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    ports:
+      - "127.0.0.1:5432:5432"
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "app", "-d", "app"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  composer:
+    image: composer:2
+    container_name: nova-argentum-composer
+    volumes:
+      - ./:/app
+    working_dir: /app
+    profiles: ["tools"]
+    user: "${UID:-1000}:${GID:-1000}"
+
+volumes:
+  db_data:

@@ -1,0 +1,41 @@
+# Use the front controller as index file. It serves as a fallback solution when
+# every other rewrite/redirect fails (e.g. in an aliased environment without
+# mod_rewrite). Additionally, this reduces the matching process for the
+# (start) controller URL significantly.
+DirectoryIndex index.php
+
+# By default, Apache does not evaluate symbolic links for authentication,
+# etc.  Therefore, the RewriteRule directives must be turned off for a
+# virtual host using the document root where the symbolic links are
+# pointing to the rewrite target. When the FollowSymLinks option is
+# disabled, the RewriteEngine directives must be disabled as well.
+Options -Indexes +FollowSymlinks -MultiViews
+
+# Disabling MultiViews prevents unwanted negotiation, e.g. "/index" should
+# not resolve to the index.php file but to the index.html.twig template.
+
+# The following directives are set to only apply the rewrite rules when the
+# request is for a file/directory that does not physically exist. This
+# prevents the Apache server from scanning the filesystem for a file that
+# does not exist (improving performance).
+
+# Treat existing files/directories as they are (no rewrite needed).
+RewriteCond %{REQUEST_FILENAME} -f [OR]
+RewriteCond %{REQUEST_FILENAME} -d
+RewriteRule ^ - [L]
+
+# Rewrite all other queries to the front controller.
+RewriteRule ^ index.php [L]
+
+# The following directives are set to set the proper HTTP headers to improve
+# the security of the application.
+<IfModule mod_headers.c>
+    # Disable content sniffing in some browsers.
+    Header set X-Content-Type-Options "nosniff"
+    # Disable referrer leaking.
+    Header set Referrer-Policy "strict-origin-when-cross-origin"
+    # Disable cross-site scripting filter.
+    Header set X-XSS-Protection "1; mode=block"
+    # Force some security headers.
+    Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+</IfModule>
