@@ -1,0 +1,14 @@
+# Routes for the Vite profiler panel. Manually installed from
+# vendor/pentatrion/vite-bundle/install/config/routes/pentatrion_vite.yaml
+# because the pentatrion/vite-bundle Flex recipe is not installed in this
+# project (would overwrite package.json + vite.config.js with Vite 8 defaults,
+# which break the Node 18.19 host).
+when@dev:
+    _pentatrion_vite:
+        prefix: /build
+        resource: "@PentatrionViteBundle/Resources/config/routing.yaml"
+
+    _profiler_vite:
+        path: /_profiler/vite
+        defaults:
+            _controller: Pentatrion\ViteBundle\Controller\ProfilerController::info
