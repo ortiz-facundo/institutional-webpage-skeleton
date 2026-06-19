@@ -1,0 +1,21 @@
+{#
+    Breadcrumb trail.
+    Contract:
+      @var trail   list<{label: string, path: ?string}>
+#}
+<nav class="mb-4 text-sm" aria-label="Breadcrumb">
+    <ol class="flex items-center gap-1 text-stone-500">
+        {% for crumb in trail %}
+            <li class="flex items-center gap-1">
+                {% if crumb.path %}
+                    <a href="{{ path(crumb.path) }}" class="hover:text-stone-900">{{ crumb.label }}</a>
+                {% else %}
+                    <span class="text-stone-900">{{ crumb.label }}</span>
+                {% endif %}
+                {% if not loop.last %}
+                    <span aria-hidden="true" class="text-stone-300">/</span>
+                {% endif %}
+            </li>
+        {% endfor %}
+    </ol>
+</nav>

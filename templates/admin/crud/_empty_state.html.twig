@@ -1,0 +1,16 @@
+{#
+    Reusable empty-state callout.
+    Contract:
+      @var message       string
+      @var action_path   ?string
+      @var action_label  string
+#}
+<div class="rounded-lg border border-dashed border-stone-300 bg-stone-50 p-12 text-center">
+    <p class="text-stone-600">{{ message }}</p>
+    {% if action_path is defined and action_path %}
+        <a href="{{ path(action_path) }}"
+           class="mt-4 inline-flex items-center rounded-md bg-stone-900 px-4 py-2 text-sm font-medium text-stone-50 shadow-sm hover:bg-stone-800">
+            {{ action_label|default('Create one') }}
+        </a>
+    {% endif %}
+</div>

@@ -1,0 +1,23 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}{% block admin_title %}Backoffice{% endblock %} — Nova Argentum{% endblock %}
+
+{% block body %}
+    <div class="flex min-h-screen bg-stone-50">
+        {% include 'admin/_sidebar.html.twig' with {current_route: app.request.attributes.get('_route')} %}
+        <main class="flex-1 overflow-y-auto">
+            <div class="mx-auto max-w-6xl px-8 py-8">
+                {% for label, messages in app.flashes %}
+                    {% for message in messages %}
+                        {% set color = label == 'error' ? 'rose' : (label == 'success' ? 'emerald' : 'stone') %}
+                        <div class="mb-4 rounded-md border border-{{ color }}-200 bg-{{ color }}-50 p-3 text-sm text-{{ color }}-800">
+                            {{ message }}
+                        </div>
+                    {% endfor %}
+                {% endfor %}
+
+                {% block admin_body %}{% endblock %}
+            </div>
+        </main>
+    </div>
+{% endblock %}

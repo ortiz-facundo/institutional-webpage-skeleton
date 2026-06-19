@@ -1,0 +1,58 @@
+{#
+    Sidebar nav. Each item is gated by an `is_granted` call; if the user
+    doesn't have the permission (or role), the item is hidden entirely.
+
+    Contract:
+      @var current_route  string  the active route name (for highlighting)
+#}
+<aside class="flex h-screen w-64 flex-col border-r border-stone-200 bg-white">
+    <div class="flex h-16 items-center gap-2 border-b border-stone-200 px-6">
+        <span aria-hidden="true" class="text-xl">&#129689;</span>
+        <span class="font-serif text-lg text-stone-900">Nova Argentum</span>
+    </div>
+
+    <nav class="flex-1 space-y-1 px-3 py-6" aria-label="Main">
+        <a href="{{ path('admin_dashboard') }}"
+           class="flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium {{ current_route starts with 'admin_dashboard' ? 'bg-stone-900 text-stone-50' : 'text-stone-700 hover:bg-stone-100' }}">
+            <span aria-hidden="true">&#9632;</span>
+            <span>Dashboard</span>
+        </a>
+
+        {% if is_granted(constant('App\\Security\\Permission::PERMISSION_MANAGE_USERS')) %}
+            <a href="{{ path('admin_user_index') }}"
+               class="flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium {{ current_route starts with 'admin_user' ? 'bg-stone-900 text-stone-50' : 'text-stone-700 hover:bg-stone-100' }}">
+                <span aria-hidden="true">&#9787;</span>
+                <span>Users</span>
+            </a>
+        {% endif %}
+
+        {% if is_granted(constant('App\\Security\\Permission::PERMISSION_MANAGE_ROLES')) %}
+            <a href="{{ path('admin_role_index') }}"
+               class="flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium {{ current_route starts with 'admin_role' ? 'bg-stone-900 text-stone-50' : 'text-stone-700 hover:bg-stone-100' }}">
+                <span aria-hidden="true">&#10070;</span>
+                <span>Roles</span>
+            </a>
+        {% endif %}
+
+        {% if is_granted(constant('App\\Security\\Permission::PERMISSION_MANAGE_PERMISSIONS')) %}
+            <a href="{{ path('admin_permission_index') }}"
+               class="flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium {{ current_route starts with 'admin_permission' ? 'bg-stone-900 text-stone-50' : 'text-stone-700 hover:bg-stone-100' }}">
+                <span aria-hidden="true">&#10003;</span>
+                <span>Permissions</span>
+            </a>
+        {% endif %}
+    </nav>
+
+    <div class="border-t border-stone-200 px-3 py-4">
+        <div class="mb-3 px-3 text-xs text-stone-500">
+            {{ app.user.email }}
+        </div>
+        <form method="post" action="{{ path('app_logout') }}">
+            <button type="submit"
+                    class="flex w-full items-center gap-3 rounded-md px-3 py-2 text-left text-sm font-medium text-stone-700 hover:bg-stone-100">
+                <span aria-hidden="true">&#8612;</span>
+                <span>Sign out</span>
+            </button>
+        </form>
+    </div>
+</aside>

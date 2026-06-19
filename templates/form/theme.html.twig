@@ -1,0 +1,95 @@
+{#
+    Tailwind form theme. `{% use %}`s the default `form_div_layout.html.twig`
+    so every block is defined; we only restyle the ones we want to change,
+    and `{{ parent() }}` falls through to the default markup.
+
+    Blocks overridden:
+      - form_label
+      - form_errors
+      - form_row
+      - form_widget_simple   (covers text/email/password/url/tel/etc.)
+      - textarea_widget
+      - choice_widget_expanded
+      - choice_widget_collapsed
+      - checkbox_widget
+#}
+
+{% use 'form_div_layout.html.twig' %}
+
+{% block form_label %}
+    {% set label_attr = label_attr|merge({
+        class: (label_attr.class|default('') ~ ' block text-sm font-medium text-stone-700 mb-1')|trim
+    }) %}
+    {{ parent() }}
+{% endblock %}
+
+{% block form_label_content %}
+    {%- if label is not same as(false) -%}
+        {%- if not label -%}
+            {%- if label_format is not empty -%}
+                {% set label = label_format|replace({
+                    '%name%': name,
+                    '%id%': id,
+                }) %}
+            {%- else -%}
+                {% set label = name|humanize %}
+            {%- endif -%}
+        {%- endif -%}
+        {{ label|trans({}, translation_domain) }}
+    {%- endif -%}
+{% endblock %}
+
+{% block form_errors %}
+    {% if errors|length > 0 %}
+        <ul class="mt-1 text-sm text-rose-600 space-y-0.5">
+            {% for error in errors %}
+                <li>{{ error.message }}</li>
+            {% endfor %}
+        </ul>
+    {% endif %}
+{% endblock %}
+
+{% block form_row %}
+    <div class="mb-4">
+        {{ parent() }}
+    </div>
+{% endblock %}
+
+{% block form_widget_simple %}
+    {% set attr = attr|merge({
+        class: (attr.class|default('') ~ ' block w-full rounded-md border border-stone-300 bg-white px-3 py-2 text-stone-900 placeholder-stone-400 shadow-sm focus:border-amber-600 focus:outline-none focus:ring-1 focus:ring-amber-600')|trim
+    }) %}
+    {{ parent() }}
+{% endblock %}
+
+{% block textarea_widget %}
+    {% set attr = attr|merge({
+        class: (attr.class|default('') ~ ' block w-full rounded-md border border-stone-300 bg-white px-3 py-2 text-stone-900 placeholder-stone-400 shadow-sm focus:border-amber-600 focus:outline-none focus:ring-1 focus:ring-amber-600')|trim
+    }) %}
+    {{ parent() }}
+{% endblock %}
+
+{% block choice_widget_expanded %}
+    <div {{ block('widget_container_attributes') }}>
+        {% for child in form %}
+            <label class="flex items-center gap-2 text-sm text-stone-800">
+                {{ form_widget(child, {attr: {class: 'h-4 w-4 rounded border-stone-300 text-amber-700 focus:ring-amber-600'}}) }}
+                {{ form_label(child, null, {translation_domain: choice_translation_domain}) }}
+            </label>
+        {% endfor %}
+    </div>
+{% endblock %}
+
+{% block choice_widget_collapsed %}
+    {% set attr = attr|merge({
+        class: (attr.class|default('') ~ ' block w-full rounded-md border border-stone-300 bg-white px-3 py-2 text-stone-900 shadow-sm focus:border-amber-600 focus:outline-none focus:ring-1 focus:ring-amber-600')|trim
+    }) %}
+    {{ parent() }}
+{% endblock %}
+
+{% block checkbox_widget %}
+    {% set attr = attr|merge({
+        class: (attr.class|default('') ~ ' h-4 w-4 rounded border-stone-300 text-amber-700 focus:ring-amber-600')|trim
+    }) %}
+    {{ parent() }}
+{% endblock %}

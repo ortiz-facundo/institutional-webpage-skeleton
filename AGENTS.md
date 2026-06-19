@@ -11,11 +11,16 @@
 - Symfony 7.4 institutional webpage for a land development and brokerage
   business.
 - Stack: **PHP 8.4**, **Apache 2.4** (single container, no `php-fpm` split),
-  **PostgreSQL 16**, **Vite 5**, **Tailwind 3.4**, **Doctrine ORM 3.6**.
+  **PostgreSQL 16**, **Vite 5**, **Tailwind 3.4**, **Doctrine ORM 3.6**,
+  **Symfony Security 7.4** (form login + stateless CSRF + login throttling),
+  **Symfony Form 7.4**, **Symfony Validator 7.4**.
 - Three Docker services: `php` (Apache), `database` (Postgres), `composer`
   (sidecar, `profile=tools`, never auto-starts).
 - Frontend assets built on the host with **Node 18+**; HMR via `npm run dev`.
 - No host PHP, no host Composer, no host Postgres required — only Docker.
+- An authenticated **backoffice** lives under `/admin`, gated by RBAC.
+  Public homepage at `/`, login at `/login`, registration at `/register`.
+- Test user in dev: `test@nova-argentum.local` / `test` (role: `ROLE_ADMIN`).
 
 ---
 
@@ -67,6 +72,16 @@ In priority order. If you find yourself about to violate one of these, stop.
 10. **Never downgrade `doctrine/doctrine-bundle` below 3.2 or
     `doctrine-migrations-bundle` below 4.0.** Both require PHP 8.4; the
     Dockerfile is pinned to `php:8.4-apache` because of this.
+11. **Never name a Doctrine entity table `user` on Postgres.** `user` is a
+    reserved word and breaks unquoted queries. Our User entity uses
+    `#[ORM\Table(name: 'app_user')]`. The migration that creates the
+    schema must use the same quoted/unquoted name.
+12. **Never define a permission string anywhere except `App\Security\Permission`.**
+    The catalog is the canonical source of truth. The seed migration and
+    fixtures iterate `Permission::all()`; the voter matches by exact string
+    equality. A typo anywhere breaks RBAC silently. To add a permission:
+    append a constant + add to `all()` + ship a new migration that calls
+    `Permission::all()` in its `up()`.
 
 ---
 
@@ -74,16 +89,58 @@ In priority order. If you find yourself about to violate one of these, stop.
 
 ```
 src/Controller/      Symfony controllers, PSR-4 App\Controller\
+  ├── Admin/          Backoffice controllers. AbstractCrudController is the shared base.
+  └── Security/       LoginController, RegistrationController, LogoutController.
+
 src/Entity/           Doctrine entities, attribute mapping, PSR-4 App\Entity\
+                      Current: User (table: app_user), Role, Permission.
+
 src/Repository/       Custom repositories, PSR-4 App\Repository\
-src/DataFixtures/     Doctrine fixtures
-templates/            Twig. base.html.twig is the layout; every page extends it.
-                      Templates/ subdirs per page: templates/<page>/index.html.twig
+                      Current: UserRepository, RoleRepository, PermissionRepository.
+
+src/Security/         Security-related non-controller code.
+                      Permission.php     — the canonical permission catalog
+                                           (PERMISSION_* constants, all(), choices(), isValid()).
+                      PermissionVoter.php — grants is_granted(Permission::PERMISSION_*) for users
+                                           whose role assignments include the permission.
+
+src/Form/             Symfony form types. PSR-4 App\Form\
+                      Current: RegistrationFormType, RoleType, UserRolesType.
+
+src/DataFixtures/     Doctrine fixtures. Dependencies: PermissionFixtures → RoleFixtures
+                      → UserFixtures → AppFixtures (orchestrator).
+
+templates/            Twig. base.html.twig is the public-site layout; every page extends it.
+  ├── form/
+  │   └── theme.html.twig    Tailwind form theme (uses form_div_layout.html.twig).
+  ├── security/              login.html.twig, register.html.twig (public auth pages).
+  ├── admin/
+  │   ├── base.html.twig     Two-column layout: sidebar + main content.
+  │   ├── _sidebar.html.twig Permission-gated nav (uses is_granted).
+  │   ├── crud/              SHARED CRUD PARTIALS — used by every entity that needs
+  │   │   │                   list / new / edit / delete screens. See §"Shared Twig
+  │   │   │                   CRUD base" below.
+  │   │   ├── _list.html.twig
+  │   │   ├── _form.html.twig
+  │   │   ├── _delete_form.html.twig
+  │   │   ├── _empty_state.html.twig
+  │   │   └── _breadcrumbs.html.twig
+  │   ├── dashboard/         Backoffice home (greeting + permission-gated tile grid).
+  │   ├── role/              Role CRUD screens — thin wrappers around the CRUD partials.
+  │   ├── user/              User list + edit-roles screen.
+  │   └── permission/        Read-only permission catalog viewer.
+  └── home/                  Public homepage.
+
 assets/               Vite inputs: app.js + styles/app.css. New entries also live here.
 config/packages/      Per-bundle configs. Symfony Flex writes via `###> pkg ###` markers —
                       preserve them so recipes stay idempotent on reinstall.
+                      security.yaml  — firewall, providers, password hashers, access_control.
+                      csrf.yaml      — token_id 'authenticate' is in stateless_token_ids.
+                      twig.yaml      — registers form/themes.html.twig.
 config/routes/        Route imports only. Controllers are auto-discovered via attributes.
 migrations/           Doctrine migrations. Committed.
+                      Version... schema migration creates the 5 tables.
+                      Version... permission-seed migration inserts Permission::all() rows.
 public/build/         Generated by `npm run build`; gitignored.
 docker/               Dockerfile support files (opcache.ini, apcu.ini). NOT in .dockerignore.
 apache/               vhost config. NOT in .dockerignore.
@@ -124,13 +181,144 @@ npm run build
 
 URLs once running:
 
-- App:    <http://localhost:8000>
-- Vite:   <http://localhost:5173> (only when `npm run dev` is running)
-- DB:     `127.0.0.1:5432` from host, `database:5432` from inside containers
+- App (public):  <http://localhost:8000>
+- Login:         <http://localhost:8000/login>
+- Register:      <http://localhost:8000/register>
+- Backoffice:    <http://localhost:8000/admin>  (auth required)
+- Vite:          <http://localhost:5173>  (only when `npm run dev` is running)
+- DB:            `127.0.0.1:5432` from host, `database:5432` from inside containers
+
+Test user (dev fixtures, after running the first-time seed):
+
+- email:    `test@nova-argentum.local`
+- password: `test`
+- role:     `ROLE_ADMIN` (all four permissions)
+
+---
+
+## Authentication, RBAC, and authorization
+
+### Authentication
+
+- **Form login only** at `/login`. Username is email (`_email` form field);
+  password is `_password`. CSRF via the framework's stateless mechanism
+  (see "CSRF gotcha" in Known Landmines).
+- **Logout** at `/logout` is intercepted by the firewall — the
+  `LogoutController::logout()` action should never execute; if it does,
+  it throws because something is misconfigured.
+- **Registration** at `/register` creates a `User` with the default
+  `ROLE_USER` role and a hashed password. No email verification, no captcha
+  (out of scope for this iteration).
+- **Login throttling**: 5 attempts per 15 minutes per IP, via
+  `symfony/rate-limiter`. Configured in `config/packages/security.yaml`.
+
+### RBAC: User → Role → Permission
+
+```
+       PERMISSION_*  (string constants in App\Security\Permission)
+            │
+            │  many-to-many
+            ▼
+          ROLE_*    (Role entity; e.g. ROLE_ADMIN, ROLE_USER)
+            │
+            │  many-to-many
+            ▼
+          USER      (app_user table)
+```
+
+- **Permission catalog** is hardcoded in `App\Security\Permission` as
+  `public const string PERMISSION_*`. The current 4 are:
+  - `PERMISSION_VIEW_BACKOFFICE`
+  - `PERMISSION_MANAGE_USERS`
+  - `PERMISSION_MANAGE_ROLES`
+  - `PERMISSION_MANAGE_PERMISSIONS`
+- **Roles** are rows in the `role` table. Baseline fixtures seed `ROLE_ADMIN`
+  (all 4 perms) and `ROLE_USER` (view only).
+- **Users** carry roles via the `user_role` join table. New registrations
+  get `ROLE_USER` by default; admins reassign via `/admin/users/{id}/roles`.
+- **The permission seed migration** runs `Permission::all()` and inserts one
+  row per constant. The migration is idempotent (`ON CONFLICT DO NOTHING`).
+
+### How `is_granted(Permission::PERMISSION_*)` works
+
+Two layers, by design:
+
+1. **`User::getRoles()`** flattens: it returns
+   `['ROLE_USER', <role names>, <permission names from each role>]`.
+   This makes the built-in `RoleVoter` work — it sees the permission
+   strings in the user's role set and grants.
+2. **`App\Security\PermissionVoter`** is a backup that handles attributes
+   starting with `PERMISSION_`. It checks `User::getRoles()`. (Without
+   the voter, the built-in `RoleVoter` would ABSTAIN on `PERMISSION_*`
+   attributes because they don't start with `ROLE_`, and the request
+   would 403.)
+
+The two layers are intentional redundancy. If you change `getRoles()` to
+return only role names, the voter still saves you. If you remove the
+voter, `getRoles()` still saves you. Either alone is correct.
+
+### Adding a new permission
+
+1. `src/Security/Permission.php`: append a constant + add to `all()`.
+2. Generate a new migration (it must call `Permission::all()` and INSERT
+   the new constant name with `ON CONFLICT DO NOTHING`).
+3. Re-run migrations in any environment that needs it.
+4. Assign the new permission to roles via the backoffice.
+
+---
+
+## Shared Twig CRUD base
+
+Every entity that needs full CRUD (list, new, edit, delete) reuses these
+moving parts:
+
+### `src/Controller/Admin/AbstractCrudController.php`
+
+A reusable controller that implements `index`, `new`, `edit`, `delete`.
+A concrete controller extends it and supplies a small contract:
+`getEntityClass()`, `getFormType()`, `getTemplatePrefix()`,
+`getRoutePrefix()`, `getListColumns()`, `getRequiredPermission()`,
+`getEntityLabel()`, `findEntity()`, `newEntity()`.
+
+`AbstractCrudController` itself is *not* permission-gated — each concrete
+controller is gated by a class-level `#[IsGranted(Permission::...)]` and
+the per-method calls inside the parent use
+`denyAccessUnlessGranted($this->getRequiredPermission())` as a defence in
+depth.
+
+### `templates/admin/crud/_*.twig`
+
+Reusable partials. Each takes a documented contract of variables. To add
+a new entity with full CRUD you only need three thin templates:
+
+- `templates/<entity>/index.html.twig` — wraps `_list.html.twig`
+- `templates/<entity>/new.html.twig` — wraps `_form.html.twig`
+- `templates/<entity>/edit.html.twig` — wraps `_form.html.twig` with
+  `show_delete: true`
+
+See `templates/admin/role/{index,new,edit}.html.twig` for the reference
+implementation. The `Role` entity is the canonical example of this
+pattern.
+
+### Form theme
+
+`templates/form/theme.html.twig` overrides `form_div_layout.html.twig`
+blocks to add Tailwind utility classes to the standard Symfony form
+widgets. To add a new widget type, add a block override in this file
+using the existing patterns (`form_label`, `form_widget_simple`,
+`choice_widget_expanded`, `checkbox_widget`, `textarea_widget`,
+`form_row`, `form_errors`, `form_label_content`).
+
+**Important gotcha:** the default `form_div_layout.html.twig` does NOT
+define a `text_widget` block. Text-like inputs (text, email, password,
+tel, url, search, number, etc.) all go through `form_widget_simple`.
+Override that block to restyle all of them in one go.
 
 ---
 
 ## Adding a new page
+
+For a non-CRUD public page:
 
 1. `src/Controller/FooController.php`:
 
@@ -170,6 +358,9 @@ URLs once running:
    running) so the CSS bundle picks them up.
 4. Verify the route is registered: `docker compose exec php bin/console
    debug:router | grep app_foo`.
+
+For a new entity with full CRUD, see "Shared Twig CRUD base" above and
+follow the `Role` / `templates/admin/role/` pattern.
 
 ---
 
@@ -211,6 +402,9 @@ docker compose exec php bin/console doctrine:fixtures:load
 # Drop + recreate the database (dev only)
 docker compose exec php bin/console doctrine:database:drop --force
 docker compose exec php bin/console doctrine:database:create
+
+# Inspect the database directly (Postgres)
+docker compose exec php bin/console dbal:run-sql "SELECT id, name FROM role"
 ```
 
 Entity mapping is by PHP 8 attribute (not XML/YAML). Identity generation on
@@ -227,7 +421,8 @@ Postgres is `identity` (configured in `config/packages/doctrine.yaml`).
   vendor/pkg ###` markers that delimit Flex-managed sections. **Preserve them**
   so recipes stay idempotent when packages are reinstalled.
 - **Twig:** use blocks from `base.html.twig` (`title`, `body`, `stylesheets`,
-  `javascripts`). Don't repeat the HTML shell.
+  `javascripts`) for public pages. For backoffice pages, extend
+  `admin/base.html.twig` (which itself extends `base.html.twig`).
 - **Tailwind:** utility classes only. Don't add a CSS file outside
   `assets/styles/app.css`. Extend the theme in `tailwind.config.js`, not with
   custom CSS.
@@ -238,6 +433,10 @@ Postgres is `identity` (configured in `config/packages/doctrine.yaml`).
   `vite_entry_asset`, `vite_mode`).
 - **Env vars:** add new ones to `.env` (committed defaults) and
   `.env.local` (personal overrides, gitignored).
+- **Permission names:** UPPER_SNAKE_CASE prefixed with `PERMISSION_`.
+  Role names: UPPER_SNAKE_CASE prefixed with `ROLE_`. Both names live in
+  the `name` column of their respective tables; uniqueness is enforced
+  by a unique index.
 
 ---
 
@@ -253,6 +452,23 @@ brand matures.** The full aesthetic philosophy is in
 - Purple-on-white gradient clichés. (The home page's purple is a *placeholder
   smoke-test color*; do not treat it as a brand choice.)
 - Cookie-cutter, predictable component shapes and layouts.
+
+### Backoffice visual language
+
+- **Layout**: two-column — fixed `w-64` sidebar on the left, scrollable
+  content area on the right. The sidebar lives in
+  `templates/admin/_sidebar.html.twig` and is shared across every
+  backoffice page via `admin/base.html.twig`.
+- **Sidebar items are permission-gated**: each link is wrapped in an
+  `{% if is_granted(constant('App\\Security\\Permission::PERMISSION_X')) %}`
+  check. A `ROLE_USER` (view only) sees only Dashboard + Sign out.
+- **Palette**: stone (neutral grays) for chrome, amber-600/700 as the
+  single accent. No purple, no blue, no gradients. Replace with the
+  real brand palette when it's chosen.
+- **Typography**: `font-serif` (Georgia) for page titles, default
+  sans-serif for everything else. Replace when the brand picks a font pair.
+- **Buttons**: `bg-stone-900` for primary, `text-rose-700` for destructive,
+  `text-amber-700` for in-row edit links. All in `rounded-md`.
 
 ### Technical conventions
 
@@ -271,13 +487,15 @@ body pair; document the choice here._
 
 ### Color palette
 
-_To be filled in after the first design pass. Brand colors, accent colors,
-neutral scale. Use Tailwind's `theme.extend.colors` to register them._
+_Stone + amber placeholder (see "Backoffice visual language" above). To be
+replaced after the first design pass with real brand colors, accent colors,
+and a neutral scale. Register them in Tailwind's `theme.extend.colors`._
 
 ### Iconography
 
-_To be filled in. Default is no icon library. Pick one (Heroicons, Lucide,
-Phosphor, custom SVG) and document it here._
+_Default: no icon library. Sidebar currently uses raw glyphs (▣ ☺ ✐ ✓ ↩).
+Pick one (Heroicons, Lucide, Phosphor, custom SVG) and document it here
+when chosen._
 
 ---
 
@@ -303,6 +521,30 @@ Phosphor, custom SVG) and document it here._
   inside containers (Docker service name), `127.0.0.1:5432` from the host.
   The DSN in `.env` uses `database` because Symfony only reads it from
   inside the container; from the host use `127.0.0.1`.
+- **CSRF gotcha.** Symfony 7's `SameOriginCsrfTokenManager` is enabled
+  by default (see `config/packages/csrf.yaml`). The HTML the server
+  renders contains the literal string `value="csrf-token"` in the hidden
+  CSRF input. **This is the placeholder, not a real token.** Real
+  validation is done by checking the `Origin` / `Referer` headers and a
+  cookie double-submit. If you write a curl test for a POST, you must
+  send `-H "Origin: http://localhost:8000" -H "Referer: http://localhost:8000/login"`,
+  otherwise the firewall will reject the request with a 302 to `/login`.
+  A regular browser sends these headers automatically — this only
+  affects CLI / curl / API tests.
+- **`User` table is `app_user`, not `user`.** Postgres reserves `user`.
+  Renaming the entity to use `user` later will break unquoted queries.
+  See hard rule #11.
+- **Form field `roles` on the User entity is shadowed by
+  `User::getRoles()`.** `getRoles()` is required by `UserInterface` to
+  return a `string[]` of role names; the underlying property is also
+  called `roles` and is a `Collection<Role>`. If you bind a Symfony
+  form to the User with a field named `roles` and let it use
+  reflection-based getter resolution, the form will read the string
+  array, not the collection, and the IdReader will choke. The current
+  `UserRolesType` works around this by using a model transformer
+  (`Collection` ↔ `array<Role>`) and a `getter` closure that points
+  at `getRoleEntities()`. If you add a new form that binds to User's
+  roles, follow the same pattern or set the `getter` explicitly.
 
 ---
 
@@ -315,6 +557,9 @@ Phosphor, custom SVG) and document it here._
 3. Does it need a database change? Edit the entity, run `make:migration`,
    review the generated migration, run `migrations:migrate`.
 4. Does it need a new Composer package? Use the sidecar, never the host.
-5. Does it add Tailwind classes the build doesn't know about? `npm run
+5. Does it need a new permission? Edit `App\Security\Permission`, write a
+   migration that inserts the new constant, run migrations, assign the
+   permission to the relevant roles via the backoffice.
+6. Does it add Tailwind classes the build doesn't know about? `npm run
    build` (or rely on `npm run dev` for HMR).
-6. **Do not commit.** Stop, summarize what you did, and let the user commit.
+7. **Do not commit.** Stop, summarize what you did, and let the user commit.

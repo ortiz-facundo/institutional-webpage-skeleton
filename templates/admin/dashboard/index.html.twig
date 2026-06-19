@@ -1,0 +1,35 @@
+{% extends 'admin/base.html.twig' %}
+
+{% block admin_title %}Dashboard{% endblock %}
+
+{% block admin_body %}
+    {% include 'admin/crud/_breadcrumbs.html.twig' with {trail: [{label: 'Dashboard', path: null}]} %}
+
+    <div class="mb-8">
+        <h1 class="font-serif text-3xl text-stone-900">Welcome, {{ app.user.name ?: app.user.email }}</h1>
+        <p class="text-stone-500 mt-1 text-sm">Signed in as <span class="font-mono">{{ app.user.email }}</span></p>
+    </div>
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        {% if is_granted(constant('App\\Security\\Permission::PERMISSION_MANAGE_USERS')) %}
+            <a href="{{ path('admin_user_index') }}" class="block rounded-lg border border-stone-200 bg-white p-6 shadow-sm hover:border-amber-600 hover:shadow">
+                <h2 class="font-serif text-lg text-stone-900">Users</h2>
+                <p class="text-sm text-stone-500 mt-1">Assign roles to backoffice users.</p>
+            </a>
+        {% endif %}
+
+        {% if is_granted(constant('App\\Security\\Permission::PERMISSION_MANAGE_ROLES')) %}
+            <a href="{{ path('admin_role_index') }}" class="block rounded-lg border border-stone-200 bg-white p-6 shadow-sm hover:border-amber-600 hover:shadow">
+                <h2 class="font-serif text-lg text-stone-900">Roles</h2>
+                <p class="text-sm text-stone-500 mt-1">Define which permissions each role grants.</p>
+            </a>
+        {% endif %}
+
+        {% if is_granted(constant('App\\Security\\Permission::PERMISSION_MANAGE_PERMISSIONS')) %}
+            <a href="{{ path('admin_permission_index') }}" class="block rounded-lg border border-stone-200 bg-white p-6 shadow-sm hover:border-amber-600 hover:shadow">
+                <h2 class="font-serif text-lg text-stone-900">Permissions</h2>
+                <p class="text-sm text-stone-500 mt-1">Browse the permission catalog.</p>
+            </a>
+        {% endif %}
+    </div>
+{% endblock %}
