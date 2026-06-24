@@ -1,0 +1,13 @@
+{% extends 'admin/base.html.twig' %}
+
+{% block admin_title %}{{ title }}{% endblock %}
+
+{% block admin_body %}
+    {% include 'admin/crud/_breadcrumbs.html.twig' with {trail: trail} %}
+    {% include 'admin/crud/_form.html.twig' with {
+        form: form,
+        title: title,
+        back_path: back_path,
+        submit_label: submit_label
+    } %}
+{% endblock %}

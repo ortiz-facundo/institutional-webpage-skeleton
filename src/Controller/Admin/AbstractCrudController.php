@@ -49,9 +49,30 @@ abstract class AbstractCrudController extends AbstractController
 
     abstract protected function getEntityLabel(): string;
 
+    /**
+     * Human-readable label for an entity, used in the edit/view page
+     * titles and breadcrumbs. Concrete controllers return the most
+     * identifying string the entity has (e.g. User → name ?? email;
+     * Role → name).
+     */
+    abstract protected function getEntityDisplayName(object $entity): string;
+
     abstract protected function findEntity(int $id): ?object;
 
     abstract protected function newEntity(): object;
+
+    /**
+     * Hook for subclasses to mutate the entity after the form binds and
+     * before it is persisted (create) or flushed (edit). Default is a no-op.
+     *
+     * Common uses: hash a plaintext password, normalize a slug, copy a
+     * field from the form to a derived value on the entity, etc.
+     *
+     * @param bool $isCreate true on `new()`, false on `edit()`
+     */
+    protected function onFormSubmit(object $entity, FormInterface $form, bool $isCreate): void
+    {
+    }
 
     #[Route('', name: 'index', methods: ['GET'])]
     public function index(Request $request): Response
@@ -61,13 +82,28 @@ abstract class AbstractCrudController extends AbstractController
         $repo = $this->em->getRepository($this->getEntityClass());
         $items = $repo->findBy([], ['id' => 'ASC']);
 
+        // Pre-generate a per-row delete CSRF token (the token id is
+        // `delete{id}`, scoped to the entity, so we need one per row).
+        $tokens = [];
+        foreach ($items as $item) {
+            $id = $item->getId();
+            if ($id !== null) {
+                $tokens[$id] = $this->container->get('security.csrf.token_manager')
+                    ->getToken('delete' . $id)->getValue();
+            }
+        }
+
         return $this->render($this->getTemplatePrefix() . '/index.html.twig', [
             'items'         => $items,
             'columns'       => $this->getListColumns(),
             'title'         => $this->getEntityLabel() . 's',
+            'entity_label'  => $this->getEntityLabel(),
             'new_path'      => $this->getRoutePrefix() . '_new',
             'new_label'     => 'New ' . $this->getEntityLabel(),
+            'view_path'     => $this->getRoutePrefix() . '_view',
             'edit_path'     => $this->getRoutePrefix() . '_edit',
+            'delete_path'   => $this->getRoutePrefix() . '_delete',
+            'delete_tokens' => $tokens,
             'empty_message' => 'No ' . strtolower($this->getEntityLabel()) . 's yet. Create the first one to get started.',
             'trail'         => [
                 ['label' => 'Dashboard', 'path' => 'admin_dashboard'],
@@ -86,6 +122,7 @@ abstract class AbstractCrudController extends AbstractController
         $form->handleRequest($request);
 
         if ($form->isSubmitted() && $form->isValid()) {
+            $this->onFormSubmit($entity, $form, true);
             $this->em->persist($entity);
             $this->em->flush();
             $this->addFlash('success', $this->getEntityLabel() . ' created.');
@@ -95,6 +132,7 @@ abstract class AbstractCrudController extends AbstractController
 
         return $this->render($this->getTemplatePrefix() . '/new.html.twig', [
             'form'         => $form,
+            'entity'       => $entity,
             'title'        => 'New ' . $this->getEntityLabel(),
             'back_path'    => $this->getRoutePrefix() . '_index',
             'submit_label' => 'Create',
@@ -120,6 +158,7 @@ abstract class AbstractCrudController extends AbstractController
         $form->handleRequest($request);
 
         if ($form->isSubmitted() && $form->isValid()) {
+            $this->onFormSubmit($entity, $form, false);
             $this->em->flush();
             $this->addFlash('success', $this->getEntityLabel() . ' updated.');
 
@@ -129,18 +168,37 @@ abstract class AbstractCrudController extends AbstractController
         return $this->render($this->getTemplatePrefix() . '/edit.html.twig', [
             'form'         => $form,
             'entity'       => $entity,
-            'title'        => 'Edit ' . $this->getEntityLabel(),
+            'title'        => 'Edit ' . $this->getEntityDisplayName($entity),
             'back_path'    => $this->getRoutePrefix() . '_index',
             'submit_label' => 'Save',
-            'show_delete'  => true,
-            'delete_path'  => $this->getRoutePrefix() . '_delete',
-            'delete_token' => $this->container->get('security.csrf.token_manager')
-                ->getToken('delete' . $id)->getValue(),
-            'delete_label' => 'Delete ' . $this->getEntityLabel(),
             'trail'        => [
                 ['label' => 'Dashboard', 'path' => 'admin_dashboard'],
                 ['label' => $this->getEntityLabel() . 's', 'path' => $this->getRoutePrefix() . '_index'],
-                ['label' => 'Edit #' . $id, 'path' => null],
+                ['label' => 'Edit ' . $this->getEntityDisplayName($entity), 'path' => null],
+            ],
+        ]);
+    }
+
+    #[Route('/{id}/view', name: 'view', methods: ['GET'], requirements: ['id' => '\d+'])]
+    public function view(int $id, Request $request): Response
+    {
+        $this->denyAccessUnlessGranted($this->getRequiredPermission());
+
+        $entity = $this->findEntity($id);
+        if ($entity === null) {
+            throw $this->createNotFoundException('Entity not found.');
+        }
+
+        return $this->render($this->getTemplatePrefix() . '/view.html.twig', [
+            'entity'       => $entity,
+            'title'        => $this->getEntityDisplayName($entity),
+            'entity_label' => $this->getEntityLabel(),
+            'back_path'    => $this->getRoutePrefix() . '_index',
+            'edit_path'    => $this->getRoutePrefix() . '_edit',
+            'trail'        => [
+                ['label' => 'Dashboard', 'path' => 'admin_dashboard'],
+                ['label' => $this->getEntityLabel() . 's', 'path' => $this->getRoutePrefix() . '_index'],
+                ['label' => $this->getEntityDisplayName($entity), 'path' => null],
             ],
         ]);
     }

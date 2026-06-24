@@ -278,7 +278,8 @@ A reusable controller that implements `index`, `new`, `edit`, `delete`.
 A concrete controller extends it and supplies a small contract:
 `getEntityClass()`, `getFormType()`, `getTemplatePrefix()`,
 `getRoutePrefix()`, `getListColumns()`, `getRequiredPermission()`,
-`getEntityLabel()`, `findEntity()`, `newEntity()`.
+`getEntityLabel()`, `getEntityDisplayName()`, `findEntity()`,
+`newEntity()`.
 
 `AbstractCrudController` itself is *not* permission-gated — each concrete
 controller is gated by a class-level `#[IsGranted(Permission::...)]` and
@@ -289,16 +290,24 @@ depth.
 ### `templates/admin/crud/_*.twig`
 
 Reusable partials. Each takes a documented contract of variables. To add
-a new entity with full CRUD you only need three thin templates:
+a new entity with full CRUD you only need four thin templates:
 
 - `templates/<entity>/index.html.twig` — wraps `_list.html.twig`
 - `templates/<entity>/new.html.twig` — wraps `_form.html.twig`
-- `templates/<entity>/edit.html.twig` — wraps `_form.html.twig` with
-  `show_delete: true`
+- `templates/<entity>/edit.html.twig` — wraps `_form.html.twig`
+- `templates/<entity>/view.html.twig` — read-only details page; uses the
+  same `<dl>` grid pattern as the form's inputs, plus an Edit link in the
+  page header
 
-See `templates/admin/role/{index,new,edit}.html.twig` for the reference
-implementation. The `Role` entity is the canonical example of this
-pattern.
+`AbstractCrudController` ships a `view()` route that renders
+`{templatePrefix}/view.html.twig` and an abstract
+`getEntityDisplayName(object $entity): string` hook the concrete
+controller overrides to label the entity in breadcrumbs and titles
+(e.g. User returns `name ?? email`; Role returns `name`).
+
+See `templates/admin/role/{index,new,edit,view}.html.twig` for the
+reference implementation. The `Role` entity is the canonical example
+of this pattern.
 
 ### Form theme
 
@@ -493,9 +502,23 @@ and a neutral scale. Register them in Tailwind's `theme.extend.colors`._
 
 ### Iconography
 
-_Default: no icon library. Sidebar currently uses raw glyphs (▣ ☺ ✐ ✓ ↩).
-Pick one (Heroicons, Lucide, Phosphor, custom SVG) and document it here
-when chosen._
+**Library: Heroicons 24/outline** (MIT). No JS dependency, no build step
+beyond what Vite already does. Icons are inlined as SVG in the template
+that uses them, sized `h-4 w-4` and color-tinted via `stroke="currentColor"`
+plus a `text-*` utility. New CRUD entities should use the canonical row
+actions in `templates/admin/crud/_row_actions.html.twig` — adding a new
+per-row action means either (a) extending the partial or (b) overriding
+the `crud_list_actions` block in the entity's `index.html.twig`. Don't
+introduce a second icon set.
+
+| Action | Icon            | Color (Tailwind)        | Used as                    |
+|--------|-----------------|-------------------------|----------------------------|
+| view   | `eye`           | `text-sky-700`          | inline `<a>` to view route |
+| edit   | `pencil-square` | `text-amber-700`        | inline `<a>` to edit route |
+| delete | `trash`         | `text-rose-700`         | inline `<form>` POST       |
+
+The sidebar is currently glyphs (▣ ☺ ✐ ✓ ↩); port it to Heroicons on
+the next sidebar revision.
 
 ---
 

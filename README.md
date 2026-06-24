@@ -808,11 +808,12 @@ empty state, and breadcrumbs are all shared.
 
 ### `src/Controller/Admin/AbstractCrudController.php`
 
-A reusable controller that implements `index`, `new`, `edit`, `delete`.
-A concrete controller extends it and supplies a small contract:
-`getEntityClass()`, `getFormType()`, `getTemplatePrefix()`,
+A reusable controller that implements `index`, `new`, `edit`, `view`,
+`delete`. A concrete controller extends it and supplies a small
+contract: `getEntityClass()`, `getFormType()`, `getTemplatePrefix()`,
 `getRoutePrefix()`, `getListColumns()`, `getRequiredPermission()`,
-`getEntityLabel()`, `findEntity()`, `newEntity()`.
+`getEntityLabel()`, `getEntityDisplayName()`, `findEntity()`,
+`newEntity()`.
 
 `AbstractCrudController` itself is *not* permission-gated — each
 concrete controller is gated by a class-level

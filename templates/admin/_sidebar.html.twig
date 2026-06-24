@@ -47,7 +47,11 @@
         <div class="mb-3 px-3 text-xs text-stone-500">
             {{ app.user.email }}
         </div>
+        {# app_logout accepts POST + CSRF token (see config/routes/security.yaml).
+           SameOriginCsrfTokenManager validates _csrf_token against the 'logout'
+           token id (listed in csrf.yaml's stateless_token_ids). #}
         <form method="post" action="{{ path('app_logout') }}">
+            <input type="hidden" name="_csrf_token" value="{{ csrf_token('logout') }}">
             <button type="submit"
                     class="flex w-full items-center gap-3 rounded-md px-3 py-2 text-left text-sm font-medium text-stone-700 hover:bg-stone-100">
                 <span aria-hidden="true">&#8612;</span>

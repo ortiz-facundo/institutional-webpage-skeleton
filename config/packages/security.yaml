@@ -25,6 +25,8 @@ security:
             logout:
                 path: app_logout
                 target: app_login
+                enable_csrf: true
+                csrf_token_id: logout
             login_throttling:
                 max_attempts: 5
                 interval: '15 minutes'

@@ -64,6 +64,12 @@ final class RoleController extends AbstractCrudController
         return 'Role';
     }
 
+    protected function getEntityDisplayName(object $entity): string
+    {
+        \assert($entity instanceof Role);
+        return $entity->getName();
+    }
+
     protected function findEntity(int $id): ?Role
     {
         return $this->roles->find($id);

@@ -1,16 +1,13 @@
 {#
     Reusable form partial. Renders a card with title, the Symfony form,
-    a submit button, and an optional delete form for the edit case.
+    and a submit button. Delete is NOT included here — the row-actions
+    partial on the list view is the canonical place to delete entities.
 
     Contract:
       @var form          Symfony\Component\Form\FormView
       @var title         string
       @var back_path     string
       @var submit_label  string           e.g. 'Save'
-      @var show_delete   bool             default false
-      @var delete_path   ?string
-      @var delete_token  ?string
-      @var delete_label  string           e.g. 'Delete'
 #}
 <div class="mb-4">
     <a href="{{ path(back_path) }}" class="text-sm text-stone-500 hover:text-stone-900">&larr; Back</a>
@@ -23,19 +20,11 @@
     {% block crud_form_body %}
         {{ form_widget(form) }}
     {% endblock %}
-    <div class="mt-6 flex items-center justify-between">
+    <div class="mt-6 flex items-center justify-end">
         <button type="submit"
                 class="inline-flex items-center rounded-md bg-stone-900 px-4 py-2 text-sm font-medium text-stone-50 shadow-sm hover:bg-stone-800 focus:outline-none focus:ring-2 focus:ring-amber-600 focus:ring-offset-2">
             {{ submit_label|default('Save') }}
         </button>
-        {% if show_delete|default(false) and delete_path is defined and delete_path %}
-            {% include 'admin/crud/_delete_form.html.twig' with {
-                path: delete_path,
-                id: entity.id|default(null),
-                token: delete_token,
-                label: delete_label|default('Delete')
-            } %}
-        {% endif %}
     </div>
     {{ form_end(form) }}
 </div>

@@ -9,8 +9,12 @@
       @var empty_message     string
       @var new_path          ?string
       @var new_label         string
+      @var entity_label      string       e.g. 'User', 'Role'
       @var show_actions      bool         default true
+      @var view_path         ?string      per-row view route name
       @var edit_path         ?string      per-row edit route name
+      @var delete_path       ?string      per-row delete route name
+      @var delete_tokens     array<int,string>  entity_id => token
 #}
 <div class="flex items-center justify-between mb-6">
     <div>
@@ -68,13 +72,16 @@
                         {% endfor %}
                         {% if show_actions|default(true) %}
                             <td class="px-4 py-3 text-right text-sm font-medium">
-                                <div class="inline-flex items-center gap-3">
-                                    {% block crud_list_actions %}
-                                        {% if edit_path is defined and edit_path %}
-                                            <a href="{{ path(edit_path, {id: item.id}) }}" class="text-amber-700 hover:text-amber-800">Edit</a>
-                                        {% endif %}
-                                    {% endblock %}
-                                </div>
+                                {% block crud_list_actions %}
+                                    {% include 'admin/crud/_row_actions.html.twig' with {
+                                        entity: item,
+                                        entity_label: entity_label|default('item'),
+                                        view_path: view_path|default(null),
+                                        edit_path: edit_path|default(null),
+                                        delete_path: delete_path|default(null),
+                                        delete_token: delete_tokens is defined and delete_tokens[item.id] is defined ? delete_tokens[item.id] : null
+                                    } %}
+                                {% endblock %}
                             </td>
                         {% endif %}
                     </tr>

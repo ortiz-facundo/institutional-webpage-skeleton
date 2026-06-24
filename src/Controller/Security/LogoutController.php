@@ -15,7 +15,7 @@ final class LogoutController extends AbstractController
      * If it is reached, security is misconfigured and the action
      * throws so the failure is loud.
      */
-    #[Route('/logout', name: 'app_logout', methods: ['GET'])]
+    #[Route('/logout', name: 'app_logout', methods: ['POST'])]
     public function logout(): Response
     {
         throw new \LogicException('This code is reached only if logout is misconfigured; the firewall intercepts /logout.');
