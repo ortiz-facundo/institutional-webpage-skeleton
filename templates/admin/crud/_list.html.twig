@@ -15,6 +15,9 @@
       @var edit_path         ?string      per-row edit route name
       @var delete_path       ?string      per-row delete route name
       @var delete_tokens     array<int,string>  entity_id => token
+      @var impersonate_path      ?string           per-row impersonate route name
+      @var impersonate_tokens    array<int,string> entity_id => token
+      @var hide_impersonate      list<int>         entity ids where the button is suppressed
 #}
 <div class="flex items-center justify-between mb-6">
     <div>
@@ -79,7 +82,10 @@
                                         view_path: view_path|default(null),
                                         edit_path: edit_path|default(null),
                                         delete_path: delete_path|default(null),
-                                        delete_token: delete_tokens is defined and delete_tokens[item.id] is defined ? delete_tokens[item.id] : null
+                                        delete_token: delete_tokens is defined and delete_tokens[item.id] is defined ? delete_tokens[item.id] : null,
+                                        impersonate_path: impersonate_path|default(null),
+                                        impersonate_token: impersonate_tokens is defined and impersonate_tokens[item.id] is defined ? impersonate_tokens[item.id] : null,
+                                        hide_impersonate: hide_impersonate|default([])
                                     } %}
                                 {% endblock %}
                             </td>

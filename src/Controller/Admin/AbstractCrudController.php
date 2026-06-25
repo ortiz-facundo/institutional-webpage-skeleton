@@ -74,6 +74,31 @@ abstract class AbstractCrudController extends AbstractController
     {
     }
 
+    /**
+     * Route name for an "impersonate this row" action, or null to disable
+     * the button. Default: null. Subclasses that want a "log in as" button
+     * on each row override this to return the route name. The caller is
+     * responsible for ensuring the current user is allowed to impersonate
+     * (e.g. by returning null when `is_granted(PERMISSION_IMPERSONATE_USERS)`
+     * is false); the actual route still has `#[IsGranted]` as defence in
+     * depth.
+     */
+    protected function getImpersonatePath(): ?string
+    {
+        return null;
+    }
+
+    /**
+     * Per-row hide flag for the impersonate button. Default: never hide.
+     * Subclasses override to suppress the button on the current user's own
+     * row, on admins, etc. The list partial uses the inverse — "show if
+     * not hidden" — so the default behaviour is "show on every row".
+     */
+    protected function shouldHideImpersonate(object $entity): bool
+    {
+        return false;
+    }
+
     #[Route('', name: 'index', methods: ['GET'])]
     public function index(Request $request): Response
     {
@@ -82,30 +107,55 @@ abstract class AbstractCrudController extends AbstractController
         $repo = $this->em->getRepository($this->getEntityClass());
         $items = $repo->findBy([], ['id' => 'ASC']);
 
+        $csrf = $this->container->get('security.csrf.token_manager');
+
         // Pre-generate a per-row delete CSRF token (the token id is
         // `delete{id}`, scoped to the entity, so we need one per row).
-        $tokens = [];
+        $deleteTokens = [];
         foreach ($items as $item) {
             $id = $item->getId();
             if ($id !== null) {
-                $tokens[$id] = $this->container->get('security.csrf.token_manager')
-                    ->getToken('delete' . $id)->getValue();
+                $deleteTokens[$id] = $csrf->getToken('delete' . $id)->getValue();
+            }
+        }
+
+        // Impersonate button: optional. Only generates tokens for rows where
+        // the button is actually shown (avoids producing tokens for hidden
+        // rows). The set of hidden IDs is also passed so the partial can
+        // skip rendering the form per row.
+        $impersonatePath = $this->getImpersonatePath();
+        $impersonateTokens = [];
+        $hiddenIds = [];
+        if ($impersonatePath !== null) {
+            foreach ($items as $item) {
+                $id = $item->getId();
+                if ($id === null) {
+                    continue;
+                }
+                if ($this->shouldHideImpersonate($item)) {
+                    $hiddenIds[$id] = true;
+                    continue;
+                }
+                $impersonateTokens[$id] = $csrf->getToken('impersonate' . $id)->getValue();
             }
         }
 
         return $this->render($this->getTemplatePrefix() . '/index.html.twig', [
-            'items'         => $items,
-            'columns'       => $this->getListColumns(),
-            'title'         => $this->getEntityLabel() . 's',
-            'entity_label'  => $this->getEntityLabel(),
-            'new_path'      => $this->getRoutePrefix() . '_new',
-            'new_label'     => 'New ' . $this->getEntityLabel(),
-            'view_path'     => $this->getRoutePrefix() . '_view',
-            'edit_path'     => $this->getRoutePrefix() . '_edit',
-            'delete_path'   => $this->getRoutePrefix() . '_delete',
-            'delete_tokens' => $tokens,
-            'empty_message' => 'No ' . strtolower($this->getEntityLabel()) . 's yet. Create the first one to get started.',
-            'trail'         => [
+            'items'              => $items,
+            'columns'            => $this->getListColumns(),
+            'title'              => $this->getEntityLabel() . 's',
+            'entity_label'       => $this->getEntityLabel(),
+            'new_path'           => $this->getRoutePrefix() . '_new',
+            'new_label'          => 'New ' . $this->getEntityLabel(),
+            'view_path'          => $this->getRoutePrefix() . '_view',
+            'edit_path'          => $this->getRoutePrefix() . '_edit',
+            'delete_path'        => $this->getRoutePrefix() . '_delete',
+            'delete_tokens'      => $deleteTokens,
+            'impersonate_path'   => $impersonatePath,
+            'impersonate_tokens' => $impersonateTokens,
+            'hide_impersonate'   => array_keys($hiddenIds),
+            'empty_message'      => 'No ' . strtolower($this->getEntityLabel()) . 's yet. Create the first one to get started.',
+            'trail'              => [
                 ['label' => 'Dashboard', 'path' => 'admin_dashboard'],
                 ['label' => $this->getEntityLabel() . 's', 'path' => null],
             ],

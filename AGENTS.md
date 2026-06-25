@@ -227,17 +227,23 @@ Test user (dev fixtures, after running the first-time seed):
 ```
 
 - **Permission catalog** is hardcoded in `App\Security\Permission` as
-  `public const string PERMISSION_*`. The current 4 are:
+  `public const string PERMISSION_*`. The current 5 are:
   - `PERMISSION_VIEW_BACKOFFICE`
   - `PERMISSION_MANAGE_USERS`
   - `PERMISSION_MANAGE_ROLES`
   - `PERMISSION_MANAGE_PERMISSIONS`
+  - `PERMISSION_IMPERSONATE_USERS` — see "Impersonation" below
 - **Roles** are rows in the `role` table. Baseline fixtures seed `ROLE_ADMIN`
-  (all 4 perms) and `ROLE_USER` (view only).
+  (all 5 perms) and `ROLE_USER` (view only).
 - **Users** carry roles via the `user_role` join table. New registrations
-  get `ROLE_USER` by default; admins reassign via `/admin/users/{id}/roles`.
+  get `ROLE_USER` by default; admins reassign via `/admin/users/{id}/edit`.
 - **The permission seed migration** runs `Permission::all()` and inserts one
   row per constant. The migration is idempotent (`ON CONFLICT DO NOTHING`).
+- **RoleFixtures is also idempotent for new permissions**: when a new
+  permission is added to `Permission::all()`, re-running `RoleFixtures`
+  (via `doctrine:fixtures:load --append`) attaches it to `ROLE_ADMIN` if
+  it isn't already. The hardcoded `$admin` row keeps its id; `addPermission()`
+  is the no-op when the link already exists.
 
 ### How `is_granted(Permission::PERMISSION_*)` works
 
@@ -263,7 +269,10 @@ voter, `getRoles()` still saves you. Either alone is correct.
 2. Generate a new migration (it must call `Permission::all()` and INSERT
    the new constant name with `ON CONFLICT DO NOTHING`).
 3. Re-run migrations in any environment that needs it.
-4. Assign the new permission to roles via the backoffice.
+4. Run `doctrine:fixtures:load --append` to attach the new permission to
+   `ROLE_ADMIN` automatically (the fixtures' `syncPermissions()` is
+   idempotent for permission grants).
+5. Optionally assign the permission to other roles via the backoffice.
 
 ---
 
@@ -308,6 +317,58 @@ controller overrides to label the entity in breadcrumbs and titles
 See `templates/admin/role/{index,new,edit,view}.html.twig` for the
 reference implementation. The `Role` entity is the canonical example
 of this pattern.
+
+### Impersonation ("log in as")
+
+Admins with `PERMISSION_IMPERSONATE_USERS` see a "users" icon (Heroicons
+`users`, two overlapping figures) on every User row in
+`/admin/users`. Clicking it POSTs to `ImpersonateController::impersonate`,
+which:
+
+- Validates a CSRF token (per-row, scoped to the entity, like delete).
+- Rejects **self-impersonation** (warning flash, no switch).
+- Rejects **admin-to-admin impersonation** — a user is "an admin" if any
+  of their roles grants any `PERMISSION_MANAGE_*` permission. The
+  rejection is logged to the `audit` monolog channel and a flash error
+  is shown. There's no legitimate support reason to swap between two
+  admins, and the audit trail becomes unreadable.
+- Logs the start to the `audit` channel with actor, target, and IP.
+- Redirects to `/admin?_switch_user=<email>`, which Symfony's
+  `SwitchUserListener` (configured in `config/packages/security.yaml`)
+  catches and applies.
+
+The impersonated session is **gated by Symfony's `switch_user`
+firewall block** (`role: PERMISSION_IMPERSONATE_USERS`). That same role
+check sees the user's flattened `getRoles()`, so the firewall blocks
+the impersonation even if the controller is bypassed. The controller's
+`#[IsGranted]` is the second gate; CSRF is the third.
+
+`templates/admin/base.html.twig` renders a persistent **amber banner**
+at the top of every backoffice page while a `SwitchUserToken` is
+active. The banner names the impersonated user and the original admin,
+and offers a "Exit impersonation" button (POSTs to
+`ImpersonateController::exitImpersonation` with CSRF + audit log).
+
+To add impersonation to a new entity's row actions:
+
+1. Add `PERMISSION_IMPERSONATE_X` to the catalog + a new permission
+   seed migration + assign via fixtures.
+2. Subclass the controller: override `getImpersonatePath()` to return
+   the route name (gated by `is_granted(...)` if you want the button
+   to depend on the permission) and `shouldHideImpersonate($entity)`
+   to suppress specific rows.
+
+The row-action partial `templates/admin/crud/_row_actions.html.twig`
+takes `impersonate_path`, `impersonate_token`, and `hide_impersonate`
+to drive the icon rendering. AbstractCrudController::index() generates
+the per-row CSRF tokens automatically when `getImpersonatePath()`
+returns non-null.
+
+Audit channel: `monolog` channel `audit` writes to `var/log/audit.log`
+in dev and to JSON-on-stderr in prod. The bundle config lives in
+`config/packages/monolog.yaml`. New privileged actions should reuse
+this channel via the `Psr\Log\LoggerInterface $auditLogger` autowire
+alias (target: `audit`).
 
 ### Form theme
 
@@ -511,11 +572,12 @@ per-row action means either (a) extending the partial or (b) overriding
 the `crud_list_actions` block in the entity's `index.html.twig`. Don't
 introduce a second icon set.
 
-| Action | Icon            | Color (Tailwind)        | Used as                    |
-|--------|-----------------|-------------------------|----------------------------|
-| view   | `eye`           | `text-sky-700`          | inline `<a>` to view route |
-| edit   | `pencil-square` | `text-amber-700`        | inline `<a>` to edit route |
-| delete | `trash`         | `text-rose-700`         | inline `<form>` POST       |
+| Action       | Icon            | Color (Tailwind)  | Used as                                |
+|--------------|-----------------|-------------------|----------------------------------------|
+| view         | `eye`           | `text-sky-700`    | inline `<a>` to view route             |
+| edit         | `pencil-square` | `text-amber-700`  | inline `<a>` to edit route             |
+| impersonate  | `users`         | `text-violet-700` | inline `<form>` POST (User only)       |
+| delete       | `trash`         | `text-rose-700`   | inline `<form>` POST                   |
 
 The sidebar is currently glyphs (▣ ☺ ✐ ✓ ↩); port it to Heroicons on
 the next sidebar revision.

@@ -27,6 +27,16 @@ security:
                 target: app_login
                 enable_csrf: true
                 csrf_token_id: logout
+            # Impersonation / "log in as" — gated by the canonical
+            # permission. The role check goes through the access decision
+            # manager, so a user with PERMISSION_IMPERSONATE_USERS in
+            # their roles (via the flattening in User::getRoles()) satisfies
+            # the gate. Actual impersonation is started via
+            # ImpersonateController::impersonate() (POST, CSRF-protected).
+            switch_user:
+                role:           PERMISSION_IMPERSONATE_USERS
+                parameter:      _switch_user
+                target_route:   admin_dashboard
             login_throttling:
                 max_attempts: 5
                 interval: '15 minutes'
