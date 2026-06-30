@@ -75,6 +75,16 @@ abstract class AbstractCrudController extends AbstractController
     }
 
     /**
+     * Hook called after a successful create (after `em->persist` +
+     * `em->flush`). Use this for side-effects that require a database
+     * id — token rotation, file uploads, audit-log entries that record
+     * the new entity id, etc. Default: no-op.
+     */
+    protected function onCreateSuccess(object $entity): void
+    {
+    }
+
+    /**
      * Route name for an "impersonate this row" action, or null to disable
      * the button. Default: null. Subclasses that want a "log in as" button
      * on each row override this to return the route name. The caller is
@@ -95,6 +105,26 @@ abstract class AbstractCrudController extends AbstractController
      * not hidden" — so the default behaviour is "show on every row".
      */
     protected function shouldHideImpersonate(object $entity): bool
+    {
+        return false;
+    }
+
+    /**
+     * Route name for a per-row "resend" action (e.g. resending the
+     * account confirmation email for a Pending user). Default: null →
+     * no resend button rendered.
+     */
+    protected function getResendConfirmationPath(): ?string
+    {
+        return null;
+    }
+
+    /**
+     * Per-row hide flag for the resend button. Default: never hide.
+     * Subclasses override to suppress on rows that aren't eligible
+     * (e.g. non-Pending users for the confirmation-resend flow).
+     */
+    protected function shouldHideResend(object $entity): bool
     {
         return false;
     }
@@ -140,6 +170,24 @@ abstract class AbstractCrudController extends AbstractController
             }
         }
 
+        // Resend button: optional. Same per-row token pattern.
+        $resendPath = $this->getResendConfirmationPath();
+        $resendTokens = [];
+        $resendHidden = [];
+        if ($resendPath !== null) {
+            foreach ($items as $item) {
+                $id = $item->getId();
+                if ($id === null) {
+                    continue;
+                }
+                if ($this->shouldHideResend($item)) {
+                    $resendHidden[$id] = true;
+                    continue;
+                }
+                $resendTokens[$id] = $csrf->getToken('resend_confirmation' . $id)->getValue();
+            }
+        }
+
         return $this->render($this->getTemplatePrefix() . '/index.html.twig', [
             'items'              => $items,
             'columns'            => $this->getListColumns(),
@@ -154,6 +202,9 @@ abstract class AbstractCrudController extends AbstractController
             'impersonate_path'   => $impersonatePath,
             'impersonate_tokens' => $impersonateTokens,
             'hide_impersonate'   => array_keys($hiddenIds),
+            'resend_path'        => $resendPath,
+            'resend_tokens'      => $resendTokens,
+            'hide_resend'        => array_keys($resendHidden),
             'empty_message'      => 'No ' . strtolower($this->getEntityLabel()) . 's yet. Create the first one to get started.',
             'trail'              => [
                 ['label' => 'Dashboard', 'path' => 'admin_dashboard'],
@@ -175,6 +226,7 @@ abstract class AbstractCrudController extends AbstractController
             $this->onFormSubmit($entity, $form, true);
             $this->em->persist($entity);
             $this->em->flush();
+            $this->onCreateSuccess($entity);
             $this->addFlash('success', $this->getEntityLabel() . ' created.');
 
             return $this->redirectToRoute($this->getRoutePrefix() . '_index');

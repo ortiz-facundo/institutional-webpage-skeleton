@@ -38,6 +38,12 @@ class UserFixtures extends Fixture
         $hashed = $this->hasher->hashPassword($user, 'test');
         $user->setPassword($hashed);
 
+        // The test user must be Active so login works in dev. The
+        // migration also back-fills existing users to Active, but
+        // fresh dev installs run fixtures after migrations, so we set
+        // it here defensively.
+        $user->setState(User::USER_STATE_ACTIVE);
+
         $admin = $this->roles->findOneBy(['name' => 'ROLE_ADMIN']);
         if ($admin !== null) {
             $user->addRole($admin);

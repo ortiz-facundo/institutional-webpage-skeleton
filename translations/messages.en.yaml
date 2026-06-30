@@ -1,0 +1,19 @@
+# Account lifecycle emails (English — default)
+# Subject + body strings used by the Twig `trans()` filter. These are the
+# only translated strings in the project; admin/login forms stay English.
+
+email:
+    confirmation:
+        subject: 'Welcome — set your password'
+        greeting: 'Hello %name%,'
+        intro: 'An administrator created an account for you on Nova Argentum. Click the button below to set your password and activate your account.'
+        cta: 'Set my password'
+        expires: 'This link expires in %hours% hours.'
+        ignore: 'If you did not expect this email, you can safely ignore it.'
+    activated:
+        subject: 'Your Nova Argentum account is active'
+        body: 'Hello %name%, your account is now active. You can sign in from the backoffice login page.'
+    disabled:
+        subject: 'Your Nova Argentum account has been disabled'
+        body: 'Hello %name%, an administrator has disabled your Nova Argentum account.'
+        reason: 'Reason given: %reason%'

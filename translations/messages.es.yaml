@@ -1,0 +1,18 @@
+# Account lifecycle emails (Spanish — translations only; the English file
+# above is the source of truth for keys).
+
+email:
+    confirmation:
+        subject: 'Bienvenido — definí tu contraseña'
+        greeting: 'Hola %name%,'
+        intro: 'Un administrador creó una cuenta para vos en Nova Argentum. Hacé clic en el botón de abajo para definir tu contraseña y activar tu cuenta.'
+        cta: 'Definir mi contraseña'
+        expires: 'Este enlace vence en %hours% horas.'
+        ignore: 'Si no esperabas este correo, podés ignorarlo sin problema.'
+    activated:
+        subject: 'Tu cuenta de Nova Argentum está activa'
+        body: 'Hola %name%, tu cuenta ya está activa. Podés iniciar sesión desde la página de acceso al panel.'
+    disabled:
+        subject: 'Tu cuenta de Nova Argentum fue deshabilitada'
+        body: 'Hola %name%, un administrador deshabilitó tu cuenta de Nova Argentum.'
+        reason: 'Motivo indicado: %reason%'

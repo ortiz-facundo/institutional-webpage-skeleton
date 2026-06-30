@@ -8,19 +8,20 @@
 
 ## TL;DR
 
-- Symfony 7.4 institutional webpage for a land development and brokerage
+- Symfony institutional webpage for a land development and brokerage
   business.
-- Stack: **PHP 8.4**, **Apache 2.4** (single container, no `php-fpm` split),
-  **PostgreSQL 16**, **Vite 5**, **Tailwind 3.4**, **Doctrine ORM 3.6**,
-  **Symfony Security 7.4** (form login + stateless CSRF + login throttling),
-  **Symfony Form 7.4**, **Symfony Validator 7.4**.
+- Stack: **PHP 8.4**, **Apache 2.4** (single container), **PostgreSQL 16**,
+  **Vite 5**, **Tailwind 3.4**, **Doctrine ORM** (attribute mapping), Symfony
+  form login + stateless CSRF + login throttling.
 - Three Docker services: `php` (Apache), `database` (Postgres), `composer`
-  (sidecar, `profile=tools`, never auto-starts).
-- Frontend assets built on the host with **Node 18+**; HMR via `npm run dev`.
-- No host PHP, no host Composer, no host Postgres required — only Docker.
-- An authenticated **backoffice** lives under `/admin`, gated by RBAC.
-  Public homepage at `/`, login at `/login`, registration at `/register`.
-- Test user in dev: `test@nova-argentum.local` / `test` (role: `ROLE_ADMIN`).
+  (sidecar, `profile=tools`, never auto-starts). Frontend assets build on the
+  host with `npm run build` / `npm run dev`.
+- No host PHP, no host Composer, no host Postgres — only Docker.
+- Authenticated **backoffice** under `/admin`, gated by RBAC. Public homepage
+  at `/`, login at `/login`. **No public registration** — admins create users
+  via `/admin/users/new`, who confirm via email link.
+- Dev test user: `test@nova-argentum.local` / `test` (`ROLE_ADMIN`,
+  `USER_STATE_ACTIVE`).
 
 ---
 
@@ -90,67 +91,51 @@ In priority order. If you find yourself about to violate one of these, stop.
 ```
 src/Controller/      Symfony controllers, PSR-4 App\Controller\
   ├── Admin/          Backoffice controllers. AbstractCrudController is the shared base.
-  └── Security/       LoginController, RegistrationController, LogoutController.
+  └── Security/       LoginController, AccountConfirmationController, LogoutController.
 
-src/Entity/           Doctrine entities, attribute mapping, PSR-4 App\Entity\
-                      Current: User (table: app_user), Role, Permission.
+src/Entity/           Doctrine entities, attribute mapping.
+                      Current: User (table: app_user), Role, Permission,
+                      AccountConfirmationToken.
 
-src/Repository/       Custom repositories, PSR-4 App\Repository\
-                      Current: UserRepository, RoleRepository, PermissionRepository.
+src/Repository/       Custom repositories.
+                      Current: UserRepository, RoleRepository, PermissionRepository,
+                      AccountConfirmationTokenRepository.
 
-src/Security/         Security-related non-controller code.
-                      Permission.php     — the canonical permission catalog
-                                           (PERMISSION_* constants, all(), choices(), isValid()).
-                      PermissionVoter.php — grants is_granted(Permission::PERMISSION_*) for users
-                                           whose role assignments include the permission.
+src/Security/         Permission.php — canonical catalog (PERMISSION_*, all(), isValid()).
+                      PermissionVoter.php — is_granted backup for PERMISSION_* attributes.
+                      UserStateChecker.php — login firewall gate, blocks Disabled users.
+
+src/Service/          UserLifecycle/ — state-machine dispatchers + token issuer/
+                      validator/invalidator (see "User lifecycle" below).
 
 src/Form/             Symfony form types. PSR-4 App\Form\
-                      Current: RegistrationFormType, RoleType, UserRolesType.
+                      Current: UserType, RoleType, AccountPasswordFormType.
 
-src/DataFixtures/     Doctrine fixtures. Dependencies: PermissionFixtures → RoleFixtures
-                      → UserFixtures → AppFixtures (orchestrator).
+src/Mailer/           AccountMailer.php — TemplatedEmail wrapper for the lifecycle
+                      notifications (confirmation / activated / disabled).
 
 templates/            Twig. base.html.twig is the public-site layout; every page extends it.
-  ├── form/
-  │   └── theme.html.twig    Tailwind form theme (uses form_div_layout.html.twig).
-  ├── security/              login.html.twig, register.html.twig (public auth pages).
-  ├── admin/
-  │   ├── base.html.twig     Two-column layout: sidebar + main content.
-  │   ├── _sidebar.html.twig Permission-gated nav (uses is_granted).
-  │   ├── crud/              SHARED CRUD PARTIALS — used by every entity that needs
-  │   │   │                   list / new / edit / delete screens. See §"Shared Twig
-  │   │   │                   CRUD base" below.
-  │   │   ├── _list.html.twig
-  │   │   ├── _form.html.twig
-  │   │   ├── _delete_form.html.twig
-  │   │   ├── _empty_state.html.twig
-  │   │   └── _breadcrumbs.html.twig
-  │   ├── dashboard/         Backoffice home (greeting + permission-gated tile grid).
-  │   ├── role/              Role CRUD screens — thin wrappers around the CRUD partials.
-  │   ├── user/              User list + edit-roles screen.
-  │   └── permission/        Read-only permission catalog viewer.
-  └── home/                  Public homepage.
+  ├── form/theme.html.twig    Tailwind form theme (overrides form_div_layout blocks).
+  ├── security/               login, confirm, confirm_invalid.
+  ├── admin/                  base + _sidebar (permission-gated nav).
+  │   ├── crud/               SHARED CRUD PARTIALS — see §"Shared Twig CRUD base" below.
+  │   ├── dashboard/          Backoffice home (greeting + permission-gated tile grid).
+  │   ├── role/ user/ permission/  CRUD screens — thin wrappers around the CRUD partials.
+  └── emails/                HTML+TXT lifecycle email templates (translatable).
 
-assets/               Vite inputs: app.js + styles/app.css. New entries also live here.
-config/packages/      Per-bundle configs. Symfony Flex writes via `###> pkg ###` markers —
-                      preserve them so recipes stay idempotent on reinstall.
-                      security.yaml  — firewall, providers, password hashers, access_control.
-                      csrf.yaml      — token_id 'authenticate' is in stateless_token_ids.
-                      twig.yaml      — registers form/themes.html.twig.
+config/packages/      Per-bundle configs. Symfony Flex writes via `###> pkg ###`
+                      markers — **preserve them** so recipes stay idempotent on reinstall.
 config/routes/        Route imports only. Controllers are auto-discovered via attributes.
 migrations/           Doctrine migrations. Committed.
-                      Version... schema migration creates the 5 tables.
-                      Version... permission-seed migration inserts Permission::all() rows.
-public/build/         Generated by `npm run build`; gitignored.
-docker/               Dockerfile support files (opcache.ini, apcu.ini). NOT in .dockerignore.
+translations/         Email i18n only (en + es in messages.{en,es}.yaml).
+docker/               Dockerfile support files (opcache, apcu). NOT in .dockerignore.
 apache/               vhost config. NOT in .dockerignore.
 .opencode/skills/     Skills, including frontend-design aesthetic guidance.
 ```
 
-Everything else (`bin/`, `vendor/`, `var/`, `public/index.php`,
-`public/.htaccess`, `config/bundles.php`, `config/services.yaml`,
-`config/routes.yaml`, `src/Kernel.php`) is generated or boilerplate — don't
-edit unless you know why.
+Everything else (`bin/`, `vendor/`, `var/`, `public/index.php`, `config/bundles.php`,
+`config/services.yaml`, `config/routes.yaml`, `src/Kernel.php`) is generated
+or boilerplate — don't edit unless you know why.
 
 ---
 
@@ -183,8 +168,8 @@ URLs once running:
 
 - App (public):  <http://localhost:8000>
 - Login:         <http://localhost:8000/login>
-- Register:      <http://localhost:8000/register>
 - Backoffice:    <http://localhost:8000/admin>  (auth required)
+- Mailpit (dev): <http://localhost:8025>  (SMTP capture UI)
 - Vite:          <http://localhost:5173>  (only when `npm run dev` is running)
 - DB:            `127.0.0.1:5432` from host, `database:5432` from inside containers
 
@@ -192,7 +177,7 @@ Test user (dev fixtures, after running the first-time seed):
 
 - email:    `test@nova-argentum.local`
 - password: `test`
-- role:     `ROLE_ADMIN` (all four permissions)
+- role:     `ROLE_ADMIN` (all five permissions)
 
 ---
 
@@ -203,12 +188,9 @@ Test user (dev fixtures, after running the first-time seed):
 - **Form login only** at `/login`. Username is email (`_email` form field);
   password is `_password`. CSRF via the framework's stateless mechanism
   (see "CSRF gotcha" in Known Landmines).
-- **Logout** at `/logout` is intercepted by the firewall — the
-  `LogoutController::logout()` action should never execute; if it does,
-  it throws because something is misconfigured.
-- **Registration** at `/register` creates a `User` with the default
-  `ROLE_USER` role and a hashed password. No email verification, no captcha
-  (out of scope for this iteration).
+- **Logout** at `/logout` is POST-only with CSRF (`csrf_token_id: logout`).
+  The firewall intercepts — the `LogoutController` action should never
+  execute; if it does, it throws because something is misconfigured.
 - **Login throttling**: 5 attempts per 15 minutes per IP, via
   `symfony/rate-limiter`. Configured in `config/packages/security.yaml`.
 
@@ -321,54 +303,111 @@ of this pattern.
 ### Impersonation ("log in as")
 
 Admins with `PERMISSION_IMPERSONATE_USERS` see a "users" icon (Heroicons
-`users`, two overlapping figures) on every User row in
-`/admin/users`. Clicking it POSTs to `ImpersonateController::impersonate`,
-which:
+`users`) on every User row in `/admin/users`. Clicking it POSTs to
+`ImpersonateController::impersonate`, which:
 
-- Validates a CSRF token (per-row, scoped to the entity, like delete).
-- Rejects **self-impersonation** (warning flash, no switch).
-- Rejects **admin-to-admin impersonation** — a user is "an admin" if any
-  of their roles grants any `PERMISSION_MANAGE_*` permission. The
-  rejection is logged to the `audit` monolog channel and a flash error
-  is shown. There's no legitimate support reason to swap between two
-  admins, and the audit trail becomes unreadable.
-- Logs the start to the `audit` channel with actor, target, and IP.
-- Redirects to `/admin?_switch_user=<email>`, which Symfony's
-  `SwitchUserListener` (configured in `config/packages/security.yaml`)
-  catches and applies.
+- Validates a per-row CSRF token (same pattern as delete).
+- Rejects **self-impersonation** and **admin-to-admin impersonation** —
+  "admin" = any role with a `PERMISSION_MANAGE_*` grant. Both rejections
+  log to the `audit` channel and flash an error.
+- Logs the start (actor, target, IP) to `audit`, then redirects to
+  `/admin?_switch_user=<email>`. Symfony's `SwitchUserListener` catches
+  it.
 
-The impersonated session is **gated by Symfony's `switch_user`
-firewall block** (`role: PERMISSION_IMPERSONATE_USERS`). That same role
-check sees the user's flattened `getRoles()`, so the firewall blocks
-the impersonation even if the controller is bypassed. The controller's
-`#[IsGranted]` is the second gate; CSRF is the third.
+Three gates: Symfony's `switch_user` firewall block (gated by the
+permission via `User::getRoles()`), the controller's `#[IsGranted]`, and
+per-request CSRF.
 
-`templates/admin/base.html.twig` renders a persistent **amber banner**
-at the top of every backoffice page while a `SwitchUserToken` is
-active. The banner names the impersonated user and the original admin,
-and offers a "Exit impersonation" button (POSTs to
-`ImpersonateController::exitImpersonation` with CSRF + audit log).
+`templates/admin/base.html.twig` renders an **amber banner** while a
+`SwitchUserToken` is active, with an "Exit impersonation" button that
+POSTs to `exitImpersonation` (CSRF + audit log).
 
-To add impersonation to a new entity's row actions:
+To add impersonation to a new entity: add `PERMISSION_IMPERSONATE_X` +
+seed migration + fixtures; in the controller, override
+`getImpersonatePath()` (return route name) and `shouldHideImpersonate($entity)`
+(return `true` to suppress specific rows). `AbstractCrudController::index()`
+auto-generates per-row CSRF tokens when `getImpersonatePath()` is non-null.
 
-1. Add `PERMISSION_IMPERSONATE_X` to the catalog + a new permission
-   seed migration + assign via fixtures.
-2. Subclass the controller: override `getImpersonatePath()` to return
-   the route name (gated by `is_granted(...)` if you want the button
-   to depend on the permission) and `shouldHideImpersonate($entity)`
-   to suppress specific rows.
+**Audit channel:** `monolog` channel `audit` writes to `var/log/audit.log`
+in dev, JSON-on-stderr in prod. New privileged actions should reuse this
+channel via the autowired `Psr\Log\LoggerInterface $auditLogger` (target
+`audit`).
 
-The row-action partial `templates/admin/crud/_row_actions.html.twig`
-takes `impersonate_path`, `impersonate_token`, and `hide_impersonate`
-to drive the icon rendering. AbstractCrudController::index() generates
-the per-row CSRF tokens automatically when `getImpersonatePath()`
-returns non-null.
+### User lifecycle (state machine)
 
-Audit channel: `monolog` channel `audit` writes to `var/log/audit.log`
-in dev and to JSON-on-stderr in prod. The bundle config lives in
-`config/packages/monolog.yaml`. New privileged actions should reuse
-this channel via the `Psr\Log\LoggerInterface $auditLogger` autowire
-alias (target: `audit`).
+Accounts have three states, stored as constant-name strings on `app_user.state`:
+
+| Constant | Meaning |
+|---|---|
+| `User::USER_STATE_PENDING` | Created by admin, awaiting confirmation and password set |
+| `User::USER_STATE_ACTIVE` | Password set, can log in |
+| `User::USER_STATE_DISABLED` | Admin disabled, login blocked |
+
+Constants are the source of truth — every reference in PHP must use `User::USER_STATE_*`.
+The DB CHECK constraint and the migration that creates it are generated from the same list.
+
+State transitions go through `App\Service\UserLifecycle\*` services, **never directly
+on the entity** (the entity is pure data; services orchestrate validations + side-effects
++ audit). The shape:
+
+- `ChangeUserState` — abstract base. Template method `execute()` →
+  `checkValidations()` → `changeStateTo()` → `logAudit()`. Subclasses declare the
+  target state via `USER_CHANGE_TO` and the allowed previous states via
+  `PREVIOUS_VALID_STATES`.
+- `ChangeUserStateToActive` — `Pending → Active` (sets password) and `Disabled → Active`
+  (keeps existing hash). Sends the "activated" email only on the Pending path.
+- `ChangeUserStateToDisabled` — `Pending → Disabled` and `Active → Disabled`. Invalidates
+  pending confirmation tokens and sends the "disabled" email.
+- `UserStateTransitionService` — convenience dispatcher. Controllers inject this and
+  call `transitionTo($user, $target, $context)` rather than picking the concrete service
+  themselves. Also houses `resendConfirmation()` which rotates the user's token and
+  emails a new link (called on creation and on the admin "Resend" action).
+- `AccountTokenIssuer` / `AccountTokenInvalidator` / `AccountTokenValidator` —
+  selector+secret tokens (`AccountConfirmationToken`), 2-day TTL, sha256-stored secret,
+  constant-time comparison via `hash_equals`.
+
+Adding a new transition = a new concrete class + a new arm in the dispatcher's `match`.
+Adding a new state = the changes above plus the entity constant plus `User::USER_STATES`
+plus a CHECK-constraint migration.
+
+**Confirmation flow:**
+1. Admin creates a user via `/admin/users/new`. The form has no password field.
+   `onCreateSuccess` calls `UserStateTransitionService::resendConfirmation()`,
+   which issues a token and emails `/account/confirm?selector=…&secret=…`.
+2. User clicks → `AccountConfirmationController` → `AccountPasswordFormType`. Submit
+   calls `ChangeUserStateToActive::execute($user, $plainPassword)`, which hashes
+   the password, sets state, sends the "activated" notification, consumes the token.
+3. User logs in. `UserStateChecker::checkPreAuth` blocks Disabled users. (Symfony's
+   `AuthenticatorManager` converts `DisabledException` to a generic "Invalid
+   credentials" message to prevent user enumeration — intentional.)
+
+Email change while Pending: the `POST_SUBMIT` listener on `UserType` detects the
+email change and calls `resendConfirmation()` to invalidate old tokens and send a
+fresh link to the new address.
+
+**Password policy:** `AccountPasswordFormType` enforces `Length min: 5` (no
+PasswordStrength constraint). The service layer (`ChangeUserStateToActive`) also
+enforces the same minimum as defence in depth. The policy is enforced **only on
+set/reset** — existing hashes (including the test user's `test`) are grandfathered.
+
+i18n scope: **the email templates only** (`templates/emails/`).
+Translations live in `translations/messages.<locale>.yaml` (en + es).
+Admin/login forms stay English by design.
+
+### Dev mail capture (Mailpit)
+
+[Mailpit](https://github.com/axllent/mailpit) is the dev SMTP catcher.
+Configured in `compose.override.yaml` as the `mailer` service: SMTP on
+`mailer:1025`, web UI on `http://localhost:8025`. Auth accepts anything
+(`MP_SMTP_AUTH_ACCEPT_ANY=1`), so no credentials needed.
+
+- `.env.dev` defaults `MAILER_DSN=smtp://mailer:1025`. Override per-dev
+  in `.env.local` with a real SMTP only for prod-realistic delivery testing.
+- Smoke test: `docker compose exec php bin/console app:dev:test-email <addr>`
+  (the command refuses to run in `APP_ENV=prod`).
+- For real delivery, point `.env.local` at Mailgun/SES/your relay and
+  capture in a throwaway mailbox. Mailtrap/MailHog don't exercise DNS,
+  SPF, DKIM, or spam-folder routing — don't depend on them for prod checks.
 
 ### Form theme
 
@@ -388,48 +427,14 @@ Override that block to restyle all of them in one go.
 
 ## Adding a new page
 
-For a non-CRUD public page:
+For a non-CRUD public page: `src/Controller/FooController.php` (extends
+`AbstractController`, has `#[Route('/foo', name: 'app_foo')]`) + a thin
+`templates/foo/index.html.twig` that extends `base.html.twig`. Then
+`npm run build` (or have `npm run dev` running) so any new Tailwind
+classes pick up. Verify the route with
+`docker compose exec php bin/console debug:router | grep app_foo`.
 
-1. `src/Controller/FooController.php`:
-
-   ```php
-   <?php
-   namespace App\Controller;
-
-   use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
-   use Symfony\Component\HttpFoundation\Response;
-   use Symfony\Component\Routing\Attribute\Route;
-
-   final class FooController extends AbstractController
-   {
-       #[Route('/foo', name: 'app_foo')]
-       public function index(): Response
-       {
-           return $this->render('foo/index.html.twig');
-       }
-   }
-   ```
-
-2. `templates/foo/index.html.twig`:
-
-   ```twig
-   {% extends 'base.html.twig' %}
-
-   {% block title %}Foo — Nova Argentum{% endblock %}
-
-   {% block body %}
-     <main class="min-h-screen px-6 py-16">
-       <h1 class="text-4xl font-bold">Foo</h1>
-     </main>
-   {% endblock %}
-   ```
-
-3. If you added new Tailwind classes: `npm run build` (or have `npm run dev`
-   running) so the CSS bundle picks them up.
-4. Verify the route is registered: `docker compose exec php bin/console
-   debug:router | grep app_foo`.
-
-For a new entity with full CRUD, see "Shared Twig CRUD base" above and
+For a new entity with full CRUD see "Shared Twig CRUD base" above and
 follow the `Role` / `templates/admin/role/` pattern.
 
 ---
@@ -489,7 +494,7 @@ Postgres is `identity` (configured in `config/packages/doctrine.yaml`).
   doctrine.orm.naming_strategy.underscore` (set in `config/packages/doctrine.yaml`).
 - **Symfony Flex:** config files have `###> vendor/pkg ###` … `###<
   vendor/pkg ###` markers that delimit Flex-managed sections. **Preserve them**
-  so recipes stay idempotent when packages are reinstalled.
+  so recipes stay idempotent on reinstall.
 - **Twig:** use blocks from `base.html.twig` (`title`, `body`, `stylesheets`,
   `javascripts`) for public pages. For backoffice pages, extend
   `admin/base.html.twig` (which itself extends `base.html.twig`).
@@ -588,15 +593,12 @@ the next sidebar revision.
 
 - **Vite 8 requires Node 20.19+.** Host is Node 18.19. Don't bump Vite past 5
   without also upgrading Node.
-- **`composer` service runs as `${UID:-1000}:${GID:-1000}`.** The user can
-  shell into it and edit files with the correct ownership. Don't try to
-  change the volume layout to make vendor/ a named volume — that re-creates
-  the root-owned-volume problem we already fixed.
-- **Flex recipe state can desync** if `composer require` fails mid-install
-  (during a flaky network connection, for example). If `bin/console`
-  complains about a class for a package that's clearly in `vendor/`, see
-  `INFRASTRUCTURE_PLAN.md` §"Step 2 deviations" for the full story and the
-  recovery procedure.
+- **`composer` service runs as `${UID:-1000}:${GID:-1000}`.** Don't try to
+  make vendor/ a named volume — that re-creates the root-owned-volume
+  problem we already fixed.
+- **Flex recipe state can desync** if `composer require` fails mid-install.
+  If `bin/console` complains about a class for a package that's clearly
+  in `vendor/`, see `INFRASTRUCTURE_PLAN.md` §"Step 2 deviations".
 - **Latest `doctrine/doctrine-bundle` and `doctrine-migrations-bundle`
   require PHP 8.4.** The Dockerfile is `php:8.4-apache` for this reason.
   Don't downgrade those packages.
@@ -606,30 +608,25 @@ the next sidebar revision.
   inside containers (Docker service name), `127.0.0.1:5432` from the host.
   The DSN in `.env` uses `database` because Symfony only reads it from
   inside the container; from the host use `127.0.0.1`.
-- **CSRF gotcha.** Symfony 7's `SameOriginCsrfTokenManager` is enabled
-  by default (see `config/packages/csrf.yaml`). The HTML the server
-  renders contains the literal string `value="csrf-token"` in the hidden
-  CSRF input. **This is the placeholder, not a real token.** Real
-  validation is done by checking the `Origin` / `Referer` headers and a
-  cookie double-submit. If you write a curl test for a POST, you must
-  send `-H "Origin: http://localhost:8000" -H "Referer: http://localhost:8000/login"`,
-  otherwise the firewall will reject the request with a 302 to `/login`.
-  A regular browser sends these headers automatically — this only
-  affects CLI / curl / API tests.
+- **CSRF gotcha.** Symfony's `SameOriginCsrfTokenManager` is enabled
+  by default. The HTML the server renders contains the literal string
+  `value="csrf-token"` in the hidden CSRF input — **this is the
+  placeholder, not a real token.** Real validation is done via `Origin`
+  / `Referer` headers and a cookie double-submit. If you write a curl
+  test for a POST, send `-H "Origin: http://localhost:8000" -H
+  "Referer: http://localhost:8000/login"`, otherwise the firewall will
+  reject the request. A regular browser sends these headers automatically.
 - **`User` table is `app_user`, not `user`.** Postgres reserves `user`.
   Renaming the entity to use `user` later will break unquoted queries.
   See hard rule #11.
-- **Form field `roles` on the User entity is shadowed by
-  `User::getRoles()`.** `getRoles()` is required by `UserInterface` to
-  return a `string[]` of role names; the underlying property is also
-  called `roles` and is a `Collection<Role>`. If you bind a Symfony
-  form to the User with a field named `roles` and let it use
-  reflection-based getter resolution, the form will read the string
-  array, not the collection, and the IdReader will choke. The current
-  `UserRolesType` works around this by using a model transformer
-  (`Collection` ↔ `array<Role>`) and a `getter` closure that points
-  at `getRoleEntities()`. If you add a new form that binds to User's
-  roles, follow the same pattern or set the `getter` explicitly.
+- **Form field `roles` on the User entity is shadowed by `User::getRoles()`.**
+  `getRoles()` returns a `string[]` of role names; the underlying property
+  is a `Collection<Role>`. Binding a Symfony form to a `roles` field with
+  reflection-based getter resolution will read the string array, not the
+  collection, and the IdReader will choke. The current `UserType` works
+  around this via a `roleEntities` field with `mapped: false` + a
+  `POST_SUBMIT` listener that diffs the chosen roles. Follow the same
+  pattern for new forms that bind to User's roles.
 
 ---
 

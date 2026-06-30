@@ -255,13 +255,14 @@ existing rows).
 │   ├── base.html.twig            # Public layout
 │   ├── form/
 │   │   └── theme.html.twig       # Tailwind form theme (extends form_div_layout)
-│   ├── security/                 # login.html.twig, register.html.twig
+│   ├── security/                 # login.html.twig, confirm.html.twig, confirm_invalid.html.twig
 │   ├── admin/
 │   │   ├── base.html.twig        # Two-column: sidebar + content
 │   │   ├── _sidebar.html.twig    # Permission-gated nav
 │   │   ├── crud/                 # SHARED CRUD PARTIALS — see §13
 │   │   │   ├── _list.html.twig
 │   │   │   ├── _form.html.twig
+│   │   │   ├── _row_actions.html.twig
 │   │   │   ├── _delete_form.html.twig
 │   │   │   ├── _empty_state.html.twig
 │   │   │   └── _breadcrumbs.html.twig
@@ -269,7 +270,7 @@ existing rows).
 │   │   ├── role/                 # thin wrappers around admin/crud partials
 │   │   ├── user/
 │   │   └── permission/
-│   └── home/
+│   └── emails/                   # HTML+TXT lifecycle email templates (translatable)
 ├── tests/                        # (Not yet populated; see AGENTS.md for conventions)
 ├── var/                          # Generated — cache and logs (gitignored)
 ├── vendor/                       # Generated — Composer deps (gitignored)
@@ -533,77 +534,36 @@ once Postgres can accept connections.
 
 ### Add a new page
 
-1. Create a controller:
-   ```php
-   // src/Controller/AboutController.php
-   namespace App\Controller;
-   use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
-   use Symfony\Component\HttpFoundation\Response;
-   use Symfony\Component\Routing\Attribute\Route;
-
-   final class AboutController extends AbstractController
-   {
-       #[Route('/about', name: 'app_about')]
-       public function index(): Response
-       {
-           return $this->render('about/index.html.twig');
-       }
-   }
-   ```
-2. Create the template:
-   ```twig
-   {# templates/about/index.html.twig #}
-   {% extends 'base.html.twig' %}
-   {% block title %}About — Nova Argentum{% endblock %}
-   {% block body %}
-     <main class="min-h-screen px-6 py-16">
-       <h1 class="text-4xl font-bold">About us</h1>
-       <!-- … -->
-     </main>
-   {% endblock %}
-   ```
+1. `src/Controller/AboutController.php` (extends `AbstractController`,
+   has `#[Route('/about', name: 'app_about')]`) that renders the template.
+2. `templates/about/index.html.twig` that extends `base.html.twig`.
 3. If you introduced new Tailwind classes, run `npm run build` so the CSS
    bundle picks them up.
 
 ### Add a new entity with full CRUD (backoffice)
 
-For an entity that needs list / new / edit / delete screens in the
-backoffice, follow the `Role` / `templates/admin/role/` pattern — see
-[§13 The shared Twig CRUD base](#13-the-shared-twig-crud-base) for the
-shape. The concrete controller is ~40 lines of contract methods; the
-templates are three thin wrappers around the shared partials.
+Follow the `Role` / `templates/admin/role/` pattern — see
+[§13 The shared Twig CRUD base](#13-the-shared-twig-crud-base). The
+concrete controller is ~40 lines of contract methods; the templates are
+four thin wrappers around the shared partials (`_list`, `_form`, view,
+plus reusing `_row_actions` for icons).
 
-```bash
-# 1. Create the entity (then add a repository by hand or via make:repository)
-docker compose exec php bin/console make:entity
-
-# 2. Generate + run the schema migration
-docker compose exec php bin/console make:migration
-docker compose exec php bin/console doctrine:migrations:migrate --no-interaction
-
-# 3. Add a controller (extend AbstractCrudController), form type, and the
-#    three thin templates — see the RoleController for the contract.
-
-# 4. If the new entity needs to be navigable, add a sidebar item to
-#    templates/admin/_sidebar.html.twig wrapped in is_granted(...).
-```
+Steps: `make:entity` → `make:migration` → `migrations:migrate` →
+controller + form type + four templates → optional sidebar link gated
+by `is_granted(...)`.
 
 ### Add a new permission
 
 1. `src/Security/Permission.php`: append a `public const string
-   PERMISSION_NEW_THING = 'PERMISSION_NEW_THING'`. Add the same string to
-   the `all()` array.
-2. Generate a new migration: `docker compose exec php bin/console
-   make:migration`, then edit it to call `Permission::all()` and INSERT
+   PERMISSION_NEW_THING` (constant and `all()` array).
+2. `make:migration`, then edit it to call `Permission::all()` and INSERT
    each name with `ON CONFLICT (name) DO NOTHING`. (See the existing
    `Version...permission-seed` migration for the pattern.)
-3. Run migrations: `docker compose exec php bin/console
-   doctrine:migrations:migrate --no-interaction`.
-4. Reassign roles to include the new permission via the backoffice
-   (`/admin/roles/{id}/edit`).
+3. `migrations:migrate`.
+4. Reassign roles via `/admin/roles/{id}/edit`.
 
-Never inline a permission string anywhere else. The catalog at
-`App\Security\Permission` is the single source of truth.
+Never inline a permission string anywhere else. `App\Security\Permission`
+is the single source of truth.
 
 ### Add a new Vite entry
 
@@ -629,13 +589,9 @@ Then in the relevant template:
 docker compose --profile tools run --rm composer require vendor/package
 ```
 
-If a Flex recipe is registered for the package, follow any prompts (or pass
-`--no-interaction` if you know what you're doing). After install, clear the
-cache:
-
-```bash
-docker compose exec php bin/console cache:clear
-```
+If a Flex recipe is registered for the package, follow any prompts (or
+pass `--no-interaction` if you know what you're doing). After install,
+clear the cache: `docker compose exec php bin/console cache:clear`.
 
 ### Reset the database
 
@@ -667,13 +623,19 @@ attribute on its controller.
 |---|---|---|---|
 | `/` | GET | public | Home (placeholder) |
 | `/login` | GET, POST | public | Form login. `username_parameter: _email`, `password_parameter: _password` |
-| `/register` | GET, POST | public | Creates a `User` with the default `ROLE_USER` |
-| `/logout` | GET | (intercepts) | Firewall intercepts — controller body should never execute |
+| `/logout` | POST | (intercepts) | Firewall intercepts — controller body should never execute |
+| `/account/confirm` | GET, POST | public (token-gated) | Account confirmation link from email; sets password |
 | `/admin` | GET | `PERMISSION_VIEW_BACKOFFICE` | Greeting + permission-gated tile grid |
 | `/admin/users` | GET | `PERMISSION_MANAGE_USERS` | User list |
-| `/admin/users/{id}/roles` | GET, POST | `PERMISSION_MANAGE_USERS` | Edit a user's role assignments |
+| `/admin/users/new` | GET, POST | `PERMISSION_MANAGE_USERS` | Create user (no password field; confirmation email sent) |
+| `/admin/users/{id}` | GET | `PERMISSION_MANAGE_USERS` | View user |
+| `/admin/users/{id}/edit` | GET, POST | `PERMISSION_MANAGE_USERS` | Edit user (incl. state) |
+| `/admin/users/{id}/delete` | POST | `PERMISSION_MANAGE_USERS` | Delete user (CSRF + confirm) |
+| `/admin/users/{id}/impersonate` | POST | `PERMISSION_IMPERSONATE_USERS` | "Log in as" (CSRF-gated; banners while active) |
+| `/admin/users/{id}/resend-confirmation` | POST | `PERMISSION_MANAGE_USERS` | Resend the confirmation email |
 | `/admin/roles` | GET | `PERMISSION_MANAGE_ROLES` | Role list (count of permissions per role) |
 | `/admin/roles/new` | GET, POST | `PERMISSION_MANAGE_ROLES` | Create a role |
+| `/admin/roles/{id}` | GET | `PERMISSION_MANAGE_ROLES` | View role |
 | `/admin/roles/{id}/edit` | GET, POST | `PERMISSION_MANAGE_ROLES` | Edit a role (rename + reassign permissions) |
 | `/admin/roles/{id}/delete` | POST | `PERMISSION_MANAGE_ROLES` | Delete a role (CSRF + confirm) |
 | `/admin/permissions` | GET | `PERMISSION_MANAGE_PERMISSIONS` | Read-only view of the catalog |
@@ -684,27 +646,41 @@ attribute on its controller.
    posts to `app_login` with `_email`, `_password`, and `_csrf_token`
    (CSRF id `authenticate`).
 2. Symfony's firewall (form_login authenticator) validates the
-   credentials, runs the CSRF check (see [§14 CSRF gotcha](#csrf-gotcha)
-   below), and on success authenticates the user.
+   credentials and on success authenticates the user.
 3. `default_target_path: admin_dashboard` redirects to `/admin`.
 4. Subsequent requests reuse the session.
 
-### Registration flow
+`UserStateChecker::checkPreAuth` blocks Disabled users. Symfony's
+`AuthenticatorManager` converts the resulting `DisabledException` into
+a generic "Invalid credentials" message to prevent user enumeration —
+that is intentional, not a bug.
 
-1. `GET /register` renders `templates/security/register.html.twig` with
-   a `RegistrationFormType` form (email, name, plaintext password).
-2. On submit, the controller hashes the password via
-   `UserPasswordHasherInterface`, looks up the seeded `ROLE_USER`, adds
-   it to the new `User`, persists, and redirects to `/login` with a
-   flash message.
+### Account confirmation flow
+
+There is **no public registration route.** Admins create users via
+`/admin/users/new`; the new account is created in `USER_STATE_PENDING`
+and a confirmation email is sent automatically.
+
+1. Admin creates a user. `UserController::onCreateSuccess` calls
+   `UserStateTransitionService::resendConfirmation()`, which issues a
+   selector+secret token (`AccountConfirmationToken`, 2-day TTL,
+   sha256-stored) and emails `APP_URL/account/confirm?selector=…&secret=…`.
+2. User clicks the link → `AccountConfirmationController` (public route
+   `/account/confirm`) renders `AccountPasswordFormType`. Submit calls
+   `ChangeUserStateToActive::execute($user, $plainPassword)` which
+   hashes the password, sets state to `USER_STATE_ACTIVE`, sends an
+   "activated" notification, and consumes the token.
+3. User logs in.
+
+Email change while Pending: a `POST_SUBMIT` listener on `UserType`
+detects the email change and re-runs `resendConfirmation()` to
+invalidate old tokens and send a fresh link to the new address.
 
 ### Logout
 
-The `app_logout` route is defined in
-`src/Controller/Security/LogoutController.php`, but the firewall
-intercepts `/logout` before the action body is ever reached. The
-controller throws if the interception is misconfigured, so a failure is
-loud rather than silent.
+`/logout` is intercepted by the firewall (CSRF-protected POST,
+`csrf_token_id: logout`). The `LogoutController` action throws if the
+interception is misconfigured — a failure is loud, not silent.
 
 ### Login throttling
 
@@ -712,16 +688,31 @@ loud rather than silent.
 on `/login`. On exceed, the firewall returns a `302` to `/login` with a
 generic error; the user has to wait the throttle window out.
 
+### Dev email capture (Mailpit)
+
+Configured in `compose.override.yaml` as the `mailer` service. SMTP on
+`mailer:1025`, web UI at `http://localhost:8025`. No credentials needed
+(`MP_SMTP_AUTH_ACCEPT_ANY=1`).
+
+- **Dev**: `.env.dev` defaults `MAILER_DSN=smtp://mailer:1025`. Every
+  email stays in the local Mailpit UI — nothing leaves the dev machine.
+- **Override per-developer** with a real SMTP (Mailgun, SES, etc.) in
+  `.env.local` only when testing the actual delivery path.
+- **Prod**: never commit SMTP credentials; set them in
+  `.env.prod.local` (gitignored).
+- **Smoke test**: `docker compose exec php bin/console app:dev:test-email you@example.com`
+  (the command refuses to run in `APP_ENV=prod`).
+
 ### CSRF gotcha
 
-Symfony 7 enables the `SameOriginCsrfTokenManager` by default. The HTML
-the server renders for every form contains the literal string
-`value="csrf-token"` in the hidden CSRF input. **This is the
-placeholder, not a real token.** Real validation is done by checking the
-`Origin` / `Referer` headers and a cookie double-submit. A regular
-browser sends these headers automatically; this only matters for
-curl / CLI / API tests. If you write a curl test for a POST, you must
-send `-H "Origin: http://localhost:8000" -H "Referer: http://localhost:8000/login"`
+Symfony's `SameOriginCsrfTokenManager` is enabled by default
+(`config/packages/csrf.yaml`). The HTML the server renders for every form
+contains the literal string `value="csrf-token"` in the hidden CSRF
+input — **this is the placeholder, not a real token.** Real validation
+is done by checking the `Origin` / `Referer` headers and a cookie
+double-submit. A regular browser sends these headers automatically; this
+only matters for curl / CLI / API tests. If you write a curl test for a
+POST, send `-H "Origin: http://localhost:8000" -H "Referer: http://localhost:8000/login"`
 or the firewall will reject the request.
 
 ---
@@ -748,19 +739,19 @@ or the firewall will reject the request.
   value are identical (`PERMISSION_EDIT_USER = 'PERMISSION_EDIT_USER'`),
   so a typo in either side fails fast.
 - **Roles** are rows in the `role` table. Baseline fixtures seed
-  `ROLE_ADMIN` (all 4 perms) and `ROLE_USER` (view only).
-- **Users** carry roles via the `user_role` join table. New registrations
-  get `ROLE_USER` by default; admins reassign via
-  `/admin/users/{id}/roles`.
+  `ROLE_ADMIN` (all 5 perms) and `ROLE_USER` (view only).
+- **Users** carry roles via the `user_role` join table. Admins reassign
+  roles via `/admin/users/{id}/edit`.
 
 ### Current permission catalog
 
 | Constant | Grants |
 |---|---|
 | `PERMISSION_VIEW_BACKOFFICE` | See `/admin` and the dashboard |
-| `PERMISSION_MANAGE_USERS` | List users + edit their role assignments |
+| `PERMISSION_MANAGE_USERS` | List, create, edit users + resend confirmation |
 | `PERMISSION_MANAGE_ROLES` | Create / edit / delete roles + their permission sets |
 | `PERMISSION_MANAGE_PERMISSIONS` | View the permission catalog |
+| `PERMISSION_IMPERSONATE_USERS` | "Log in as" from the user list (backoffice banner while active) |
 
 The catalog is the canonical source of truth at
 `src/Security/Permission.php` — `all()`, `choices()`, and `isValid()` are
@@ -801,10 +792,12 @@ RBAC silently.
 
 ## 13. The shared Twig CRUD base
 
-Every entity that needs full CRUD (list, new, edit, delete) reuses the
-same moving parts. To add a new entity you only need a small controller
-and three thin templates — the form widgets, list table, delete button,
-empty state, and breadcrumbs are all shared.
+Every entity that needs full CRUD (list, new, edit, delete, view)
+reuses the same moving parts. To add a new entity you only need a small
+controller and four thin templates — the form widgets, list table,
+empty state, breadcrumbs, delete button, and impersonation row action
+are all shared. See `templates/admin/role/{index,new,edit,view}.html.twig`
+for the reference implementation (the `Role` entity).
 
 ### `src/Controller/Admin/AbstractCrudController.php`
 
@@ -823,30 +816,14 @@ defence in depth.
 
 ### `templates/admin/crud/_*.twig`
 
-| Partial | Variables | Purpose |
-|---|---|---|
-| `_list.html.twig` | `title, items, columns, new_path, new_label, edit_path, empty_message` | Page header, optional "New" button, styled table, empty-state fallback |
-| `_form.html.twig` | `form, title, back_path, submit_label, show_delete, delete_path, delete_token, delete_label, entity` | Card with title, Symfony form, submit, optional delete button |
-| `_delete_form.html.twig` | `path, id, token, label` | CSRF + method=POST delete form |
-| `_empty_state.html.twig` | `message, action_path, action_label` | "No items yet, create one" callout |
-| `_breadcrumbs.html.twig` | `trail` (list of `{label, path?}`) | Crumb renderer |
-
-### Form theme
-
-`templates/form/theme.html.twig` overrides
-`form_div_layout.html.twig` blocks to add Tailwind utility classes to
-the standard Symfony form widgets. Each override calls `{{ parent() }}`
-so the default markup is reused and only the class list is mutated.
-
-Blocks overridden: `form_label`, `form_label_content`, `form_errors`,
-`form_row`, `form_widget_simple` (covers text / email / password / tel
-/ url / etc.), `textarea_widget`, `choice_widget_expanded`,
-`choice_widget_collapsed`, `checkbox_widget`.
-
-**Important gotcha:** the default `form_div_layout.html.twig` does NOT
-define a `text_widget` block. Text-like inputs (text, email, password,
-tel, url, search, number, etc.) all go through `form_widget_simple`.
-Override that block to restyle all of them in one go.
+| Partial | Purpose |
+|---|---|
+| `_list.html.twig` | Page header, optional "New" button, styled table, empty-state fallback |
+| `_form.html.twig` | Card with title, Symfony form, submit, optional delete button |
+| `_row_actions.html.twig` | Per-row icon links: view / edit / impersonate / delete (form); row-scoped CSRF for each |
+| `_delete_form.html.twig` | CSRF + method=POST delete form |
+| `_empty_state.html.twig` | "No items yet, create one" callout |
+| `_breadcrumbs.html.twig` | Crumb renderer |
 
 The theme is registered globally in `config/packages/twig.yaml` via
 `form_themes: ['form/theme.html.twig']`.

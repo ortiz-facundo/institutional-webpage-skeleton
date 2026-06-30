@@ -15,6 +15,7 @@ security:
         main:
             lazy: true
             provider: app_user_provider
+            user_checker: App\Security\UserStateChecker
             form_login:
                 login_path: app_login
                 check_path: app_login
@@ -42,9 +43,9 @@ security:
                 interval: '15 minutes'
 
     access_control:
-        - { path: ^/login,    roles: PUBLIC_ACCESS }
-        - { path: ^/register, roles: PUBLIC_ACCESS }
-        - { path: ^/admin,    roles: IS_AUTHENTICATED_FULLY }
+        - { path: ^/login,             roles: PUBLIC_ACCESS }
+        - { path: ^/account/confirm,  roles: PUBLIC_ACCESS }
+        - { path: ^/admin,             roles: IS_AUTHENTICATED_FULLY }
 
 when@test:
     security:

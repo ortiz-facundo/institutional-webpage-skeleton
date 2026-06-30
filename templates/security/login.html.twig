@@ -22,7 +22,11 @@
             <div class="rounded-lg border border-stone-200 bg-white p-8 shadow-sm">
                 {% if error %}
                     <div class="mb-4 rounded-md border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800">
-                        {{ error.messageKey|trans(error.messageData, 'security') }}
+                        {# Symfony intentionally converts DisabledException to a
+                           generic "Invalid credentials" to prevent user
+                           enumeration — disabled accounts shouldn't reveal
+                           their state to anyone trying to log in. #}
+                        Invalid email or password.
                     </div>
                 {% endif %}
 
@@ -51,8 +55,9 @@
             </div>
 
             <p class="mt-6 text-center text-sm text-stone-500">
-                Don't have an account?
-                <a href="{{ path('app_register') }}" class="text-amber-700 hover:text-amber-800 font-medium">Create one</a>
+                Accounts are created by an administrator.
+                <br>
+                Contact your admin if you need access.
             </p>
         </div>
     </div>

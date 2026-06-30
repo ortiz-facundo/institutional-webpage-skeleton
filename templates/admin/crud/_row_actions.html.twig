@@ -12,9 +12,6 @@
     Contract:
       @var entity                  object    the row's entity (needs getId())
       @var entity_label            string    e.g. 'User', 'Role'
-      @var current_id              ?int      id of the current logged-in user;
-                                                used to hide the "log in as"
-                                                button on the user's own row.
       @var view_path               ?string   route name for view, optional
       @var edit_path               ?string   route name for edit, optional
       @var delete_path             ?string   route name for delete, optional
@@ -23,7 +20,13 @@
       @var impersonate_token       ?string   CSRF token for this row (impersonate)
       @var hide_impersonate        iterable<int>  entity ids for which to hide
                                                    the impersonate button
-                                                   (self + admins)
+                                                   (self + admins + Pending)
+      @var resend_path             ?string   route name for resend (e.g. account
+                                             confirmation resend), optional
+      @var resend_token            ?string   CSRF token for this row (resend)
+      @var hide_resend             iterable<int>  entity ids for which to hide
+                                                   the resend button
+                                                   (anything not Pending)
 #}
 <div class="inline-flex items-center gap-1">
     {% if view_path is defined and view_path %}
@@ -63,6 +66,22 @@
                 {# Heroicons 24/outline "users" — two overlapping users #}
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="h-4 w-4" aria-hidden="true">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" />
+                </svg>
+            </button>
+        </form>
+    {% endif %}
+
+    {% if resend_path is defined and resend_path and resend_token is defined and entity.id not in (hide_resend|default([])) %}
+        <form method="post" action="{{ path(resend_path, {id: entity.id}) }}" class="inline"
+              onsubmit="return confirm('Re-send the account confirmation email to this {{ entity_label|default('item')|lower }}?')">
+            <input type="hidden" name="_token" value="{{ resend_token }}">
+            <button type="submit"
+                    title="Resend confirmation email"
+                    aria-label="Resend confirmation email"
+                    class="inline-flex h-8 w-8 items-center justify-center rounded-md text-amber-700 hover:bg-amber-50 focus:outline-none focus:ring-2 focus:ring-amber-600 focus:ring-offset-2">
+                {# Heroicons 24/outline "arrow-path" — resend / refresh #}
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="h-4 w-4" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
                 </svg>
             </button>
         </form>
