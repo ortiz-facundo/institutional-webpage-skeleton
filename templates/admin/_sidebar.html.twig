@@ -44,17 +44,28 @@
     </nav>
 
     <div class="border-t border-stone-200 px-3 py-4">
-        <div class="mb-3 px-3 text-xs text-stone-500">
-            {{ app.user.email }}
-        </div>
-        {# app_logout accepts POST + CSRF token (see config/routes/security.yaml).
-           SameOriginCsrfTokenManager validates _csrf_token against the 'logout'
-           token id (listed in csrf.yaml's stateless_token_ids). #}
-        <form method="post" action="{{ path('app_logout') }}">
+        {# Profile chip: avatar + name (prominent) + email (muted).
+           Clicking the chip (or the name/email area) navigates to the
+           self-service profile page. Initials + colour come from the
+           shared _avatar partial so they're stable across surfaces. #}
+        <a href="{{ path('app_account_profile') }}"
+           class="flex items-center gap-3 rounded-md px-2 py-2 hover:bg-stone-100">
+            {% include '_avatar.html.twig' with {user: app.user, size: 'sm'} only %}
+            <span class="min-w-0 flex-1">
+                <span class="block truncate text-sm font-medium text-stone-900">
+                    {{ app.user.name ?: app.user.email }}
+                </span>
+                <span class="block truncate text-xs text-stone-500">{{ app.user.email }}</span>
+            </span>
+        </a>
+
+        {# Sign out: separate small button so the chip above can stay focused
+           on "go to your profile". Indent aligns under the name/email column.
+           app_logout accepts POST + CSRF token ('logout' token id). #}
+        <form method="post" action="{{ path('app_logout') }}" class="mt-1">
             <input type="hidden" name="_csrf_token" value="{{ csrf_token('logout') }}">
             <button type="submit"
-                    class="flex w-full items-center gap-3 rounded-md px-3 py-2 text-left text-sm font-medium text-stone-700 hover:bg-stone-100">
-                <span aria-hidden="true">&#8612;</span>
+                    class="flex w-full items-center gap-2 rounded-md px-2 py-2 pl-[3.25rem] text-left text-xs font-medium text-stone-500 hover:bg-stone-100 hover:text-stone-900">
                 <span>Sign out</span>
             </button>
         </form>

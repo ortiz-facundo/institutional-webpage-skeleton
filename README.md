@@ -625,6 +625,7 @@ attribute on its controller.
 | `/login` | GET, POST | public | Form login. `username_parameter: _email`, `password_parameter: _password` |
 | `/logout` | POST | (intercepts) | Firewall intercepts — controller body should never execute |
 | `/account/confirm` | GET, POST | public (token-gated) | Account confirmation link from email; sets password |
+| `/account/profile` | GET | `IS_AUTHENTICATED_FULLY` | Self-service profile page (avatar, name, email, roles, state); works during impersonation |
 | `/admin` | GET | `PERMISSION_VIEW_BACKOFFICE` | Greeting + permission-gated tile grid |
 | `/admin/users` | GET | `PERMISSION_MANAGE_USERS` | User list |
 | `/admin/users/new` | GET, POST | `PERMISSION_MANAGE_USERS` | Create user (no password field; confirmation email sent) |

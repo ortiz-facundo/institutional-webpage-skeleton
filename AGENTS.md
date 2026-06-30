@@ -108,8 +108,16 @@ src/Security/         Permission.php — canonical catalog (PERMISSION_*, all(),
 src/Service/          UserLifecycle/ — state-machine dispatchers + token issuer/
                       validator/invalidator (see "User lifecycle" below).
 
+src/Controller/Account/  Self-service user-facing controllers (no RBAC).
+                         Current: ProfileController (GET /account/profile).
+
 src/Form/             Symfony form types. PSR-4 App\Form\
                       Current: UserType, RoleType, AccountPasswordFormType.
+
+src/Twig/             Twig extensions. PSR-4 App\Twig\
+                      Current: ImpersonationExtension (is_impersonating,
+                      impersonator_email), UserAvatarExtension (user_avatar_color,
+                      user_initials).
 
 src/Mailer/           AccountMailer.php — TemplatedEmail wrapper for the lifecycle
                       notifications (confirmation / activated / disabled).
@@ -544,6 +552,11 @@ brand matures.** The full aesthetic philosophy is in
   sans-serif for everything else. Replace when the brand picks a font pair.
 - **Buttons**: `bg-stone-900` for primary, `text-rose-700` for destructive,
   `text-amber-700` for in-row edit links. All in `rounded-md`.
+- **User chip**: the sidebar footer shows an initials-avatar (deterministic
+  colour from `crc32(email) % palette`, see `UserAvatarExtension`) wrapping
+  a name+email link to `/account/profile`. Sign-out is a separate small
+  button below the chip. The same partial (`templates/_avatar.html.twig`)
+  is reused at `size: 'lg'` on the profile page.
 
 ### Technical conventions
 

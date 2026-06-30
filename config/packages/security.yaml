@@ -45,6 +45,9 @@ security:
     access_control:
         - { path: ^/login,             roles: PUBLIC_ACCESS }
         - { path: ^/account/confirm,  roles: PUBLIC_ACCESS }
+        # Self-service profile page. Any logged-in user (incl. ROLE_USER-only
+        # viewers) can see their own profile. No permission required — read-only.
+        - { path: ^/account/profile,   roles: IS_AUTHENTICATED_FULLY }
         - { path: ^/admin,             roles: IS_AUTHENTICATED_FULLY }
 
 when@test:
