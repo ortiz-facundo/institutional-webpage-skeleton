@@ -542,9 +542,10 @@ brand matures.** The full aesthetic philosophy is in
   content area on the right. The sidebar lives in
   `templates/admin/_sidebar.html.twig` and is shared across every
   backoffice page via `admin/base.html.twig`.
-- **Sidebar items are permission-gated**: each link is wrapped in an
-  `{% if is_granted(constant('App\\Security\\Permission::PERMISSION_X')) %}`
-  check. A `ROLE_USER` (view only) sees only Dashboard + Sign out.
+- **Sidebar items are permission-gated** via a single config-driven
+  macro; see the "Backoffice sidebar nav" subsection below. A
+  `ROLE_USER` (view only) sees only Dashboard + Sign out — the
+  Administration group collapses away entirely.
 - **Palette**: stone (neutral grays) for chrome, amber-600/700 as the
   single accent. No purple, no blue, no gradients. Replace with the
   real brand palette when it's chosen.
@@ -557,6 +558,38 @@ brand matures.** The full aesthetic philosophy is in
   a name+email link to `/account/profile`. Sign-out is a separate small
   button below the chip. The same partial (`templates/_avatar.html.twig`)
   is reused at `size: 'lg'` on the profile page.
+
+### Backoffice sidebar nav
+
+The sidebar nav is **data-driven from one Twig file**, with a small
+renderer macro beside it. Adding a new entity to the sidebar is a
+single-row edit.
+
+| File | Role |
+|---|---|
+| `templates/admin/_sidebar.html.twig` | Declares `nav_groups` (pure data — `label`, `items`, with item fields `label`, `route`, `route_prefix`, `permission`, `icon`). Owns the outer chrome (logo, footer chip, sign-out). Imports the macros and iterates the groups. |
+| `templates/admin/_nav_macros.html.twig` | **Renderer.** Three macros — `nav_item`, `nav_group`, `icon_d` (last is private to the renderer; exposes the Heroicons `d=` strings). No data here. |
+
+**Item schema.** `permission` is the `App\Security\Permission::*` constant
+*name without the class prefix* (e.g. `'PERMISSION_MANAGE_USERS'`) or
+`null` for "always visible". The macro prefixes `App\\Security\\Permission::`
+and calls `is_granted(constant(...))`. `icon` is a key into the map
+inside the `icon_d` macro; current keys are `dashboard`, `users`,
+`shield`, `key`.
+
+**Group schema.** `label: null` means un-grouped (no `<h2>`, no rule) —
+used for Dashboard. Grouped items render under a small uppercase
+stone-400 heading with a hairline rule.
+
+**Graceful collapse.** `nav_group` filters its items to the ones the
+current user is granted and renders nothing — heading and rule
+included — when no items remain. This is how a `ROLE_USER` ends up
+seeing no Administration group at all.
+
+**To add a new entity to the sidebar:** append one row to the relevant
+group's `items` in `_sidebar.html.twig`. To add a new icon, append
+its Heroicons `d=` string to the `icon_d` macro in
+`_nav_macros.html.twig` and reference the key from the config.
 
 ### Technical conventions
 
@@ -597,8 +630,8 @@ introduce a second icon set.
 | impersonate  | `users`         | `text-violet-700` | inline `<form>` POST (User only)       |
 | delete       | `trash`         | `text-rose-700`   | inline `<form>` POST                   |
 
-The sidebar is currently glyphs (▣ ☺ ✐ ✓ ↩); port it to Heroicons on
-the next sidebar revision.
+The sidebar uses Heroicons (see "Backoffice sidebar nav" above for
+the icon map location).
 
 ---
 
