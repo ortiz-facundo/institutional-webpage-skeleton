@@ -5,13 +5,13 @@
     Contract:
       @var current_route  string  the active route name (for highlighting)
 #}
-<aside class="flex h-screen w-64 flex-col border-r border-stone-200 bg-white">
+<aside class="sticky top-0 flex h-screen w-64 flex-col border-r border-stone-200 bg-white">
     <div class="flex h-16 items-center gap-2 border-b border-stone-200 px-6">
         <span aria-hidden="true" class="text-xl">&#129689;</span>
         <span class="font-serif text-lg text-stone-900">Nova Argentum</span>
     </div>
 
-    <nav class="flex-1 space-y-1 px-3 py-6" aria-label="Main">
+    <nav class="flex-1 space-y-1 overflow-y-auto px-3 py-6" aria-label="Main">
         <a href="{{ path('admin_dashboard') }}"
            class="flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium {{ current_route starts with 'admin_dashboard' ? 'bg-stone-900 text-stone-50' : 'text-stone-700 hover:bg-stone-100' }}">
             <span aria-hidden="true">&#9632;</span>
