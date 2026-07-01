@@ -11,11 +11,11 @@ use Symfony\Component\Security\Http\Authentication\AuthenticationUtils;
 
 final class LoginController extends AbstractController
 {
-    #[Route('/login', name: 'app_login', methods: ['GET', 'POST'])]
+    #[Route('/login', name: 'security_login', methods: ['GET', 'POST'])]
     public function login(AuthenticationUtils $auth): Response
     {
         if ($this->getUser() !== null) {
-            return $this->redirectToRoute('admin_dashboard');
+            return $this->redirectToRoute('backoffice_dashboard');
         }
 
         return $this->render('security/login.html.twig', [

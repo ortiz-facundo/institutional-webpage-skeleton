@@ -1,0 +1,15 @@
+{#
+    Reusable CSRF-protected POST form used to delete a row.
+    Contract:
+      @var path   string  e.g. 'administration_role_delete'
+      @var id     int|string
+      @var token  string
+      @var label  string
+#}
+<form method="post" action="{{ path(path, {id: id}) }}" onsubmit="return confirm('Are you sure?')">
+    <input type="hidden" name="_token" value="{{ token }}">
+    <button type="submit"
+            class="text-sm font-medium text-rose-700 hover:text-rose-800">
+        {{ label|default('Delete') }}
+    </button>
+</form>

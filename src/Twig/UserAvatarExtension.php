@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Twig;
 
-use App\Entity\User;
+use App\Entity\Administration\User;
 use Twig\Attribute\AsTwigFunction;
 
 /**

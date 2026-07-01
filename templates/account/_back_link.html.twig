@@ -1,0 +1,23 @@
+{#
+    Back-to-settings link used by every section page under
+    /account/profile-settings/*. Renders a single anchor that targets the
+    unified hub. Section pages include it from settings_content, typically
+    on the right side of the breadcrumb-as-heading row.
+
+    Visual: minimalist amber text-link with a Heroicons arrow-left 24/outline
+    SVG. Same chrome family as the project's existing '← Back to admin'
+    link in templates/account/profile.html.twig (no border, no shadow) so
+    the back affordance reads as a quiet action, not a primary button.
+
+    No parameters — destination is hardcoded via the route name so callers
+    cannot accidentally drift the URL.
+#}
+<a href="{{ path('account_profile_settings') }}"
+   class="inline-flex items-center gap-1 text-sm font-medium text-amber-700 hover:text-amber-800 focus:outline-none focus:ring-2 focus:ring-amber-600 focus:ring-offset-2 rounded">
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+         stroke-width="1.5" stroke="currentColor" aria-hidden="true"
+         class="h-4 w-4">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
+    </svg>
+    <span>Back to settings</span>
+</a>

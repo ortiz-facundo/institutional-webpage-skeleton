@@ -1,0 +1,114 @@
+{#
+    Reusable list partial. Renders a page header, optional "New" button,
+    a styled table for `items`, and an empty state if the list is empty.
+
+    Contract:
+      @var title             string       page title
+      @var items             iterable<object>
+      @var columns           list<{
+          label:         string,
+          path:          string,
+          class?:        string,
+          cell_partial?: string   template path; when set, the cell is
+                                   rendered by including this partial with
+                                   {value: <resolved path value>} instead
+                                   of printing the raw value as text.
+      }>
+      @var empty_message     string
+      @var new_path          ?string
+      @var new_label         string
+      @var entity_label      string       e.g. 'User', 'Role'
+      @var show_actions      bool         default true
+      @var view_path         ?string      per-row view route name
+      @var edit_path         ?string      per-row edit route name
+      @var delete_path       ?string      per-row delete route name
+      @var delete_tokens     array<int,string>  entity_id => token
+      @var impersonate_path      ?string           per-row impersonate route name
+      @var impersonate_tokens    array<int,string> entity_id => token
+      @var hide_impersonate      list<int>         entity ids where the button is suppressed
+      @var resend_path           ?string           per-row resend route name (e.g. confirmation resend)
+      @var resend_tokens         array<int,string> entity_id => token
+      @var hide_resend           list<int>         entity ids where the button is suppressed
+#}
+<div class="flex items-center justify-between mb-6">
+    <div>
+        <h1 class="text-2xl font-serif text-stone-900">{{ title }}</h1>
+        <p class="text-sm text-stone-500 mt-1">{{ items|length }} total</p>
+    </div>
+    {% if new_path is defined and new_path %}
+        <a href="{{ path(new_path) }}"
+           class="inline-flex items-center gap-2 rounded-md bg-stone-900 px-4 py-2 text-sm font-medium text-stone-50 shadow-sm hover:bg-stone-800 focus:outline-none focus:ring-2 focus:ring-amber-600 focus:ring-offset-2">
+            <span aria-hidden="true">+</span>
+            <span>{{ new_label|default('New') }}</span>
+        </a>
+    {% endif %}
+</div>
+
+{% if items|length == 0 %}
+    {% include 'shared/crud/_empty_state.html.twig' with {
+        message: empty_message|default('No items yet.'),
+        action_path: new_path|default(null),
+        action_label: new_label|default('Create one')
+    } %}
+{% else %}
+    <div class="overflow-hidden rounded-lg border border-stone-200 bg-white shadow-sm">
+        <table class="min-w-full divide-y divide-stone-200">
+            <thead class="bg-stone-50">
+                <tr>
+                    {% for col in columns %}
+                        <th scope="col" class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-stone-500">{{ col.label }}</th>
+                    {% endfor %}
+                    {% if show_actions|default(true) %}
+                        <th scope="col" class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-stone-500">Actions</th>
+                    {% endif %}
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-stone-200 bg-white">
+                {% for item in items %}
+                    <tr class="hover:bg-stone-50">
+                        {% for col in columns %}
+                            <td class="px-4 py-3 text-sm text-stone-800 {{ col.class|default('') }}">
+                                {% set value = item %}
+                                {% for segment in col.path|split('.') %}
+                                    {% if value is null %}
+                                        {% set v = '' %}
+                                    {% else %}
+                                        {% set v = attribute(value, segment) %}
+                                        {% set value = v %}
+                                    {% endif %}
+                                {% endfor %}
+                                {% if col.cell_partial is defined and col.cell_partial %}
+                                    {% include col.cell_partial with {state: value} only %}
+                                {% elseif value is iterable %}
+                                    {{ value|length }}
+                                {% else %}
+                                    {{ value|default('') }}
+                                {% endif %}
+                            </td>
+                        {% endfor %}
+                        {% if show_actions|default(true) %}
+                            <td class="px-4 py-3 text-right text-sm font-medium">
+                                {% block crud_list_actions %}
+                                    {% include 'shared/crud/_row_actions.html.twig' with {
+                                        entity: item,
+                                        entity_label: entity_label|default('item'),
+                                        view_path: view_path|default(null),
+                                        edit_path: edit_path|default(null),
+                                        delete_path: delete_path|default(null),
+                                        delete_token: delete_tokens is defined and delete_tokens[item.id] is defined ? delete_tokens[item.id] : null,
+                                        impersonate_path: impersonate_path|default(null),
+                                        impersonate_token: impersonate_tokens is defined and impersonate_tokens[item.id] is defined ? impersonate_tokens[item.id] : null,
+                                        hide_impersonate: hide_impersonate|default([]),
+                                        resend_path: resend_path|default(null),
+                                        resend_token: resend_tokens is defined and resend_tokens[item.id] is defined ? resend_tokens[item.id] : null,
+                                        hide_resend: hide_resend|default([])
+                                    } %}
+                                {% endblock %}
+                            </td>
+                        {% endif %}
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+{% endif %}

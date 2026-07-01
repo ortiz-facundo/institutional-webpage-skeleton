@@ -17,9 +17,11 @@
   (sidecar, `profile=tools`, never auto-starts). Frontend assets build on the
   host with `npm run build` / `npm run dev`.
 - No host PHP, no host Composer, no host Postgres — only Docker.
-- Authenticated **backoffice** under `/admin`, gated by RBAC. Public homepage
-  at `/`, login at `/login`. **No public registration** — admins create users
-  via `/admin/users/new`, who confirm via email link.
+- Authenticated **backoffice** gated by RBAC. Public homepage
+  at `/`, login at `/login`, dashboard at `/dashboard`, user/role/permission
+  CRUD under `/admin/...`, self-service at `/account/...`. **No public
+  registration** — admins create users via `/admin/users/new`, who confirm
+  via email link.
 - Dev test user: `test@nova-argentum.local` / `test` (`ROLE_ADMIN`,
   `USER_STATE_ACTIVE`).
 
@@ -76,7 +78,9 @@ In priority order. If you find yourself about to violate one of these, stop.
 11. **Never name a Doctrine entity table `user` on Postgres.** `user` is a
     reserved word and breaks unquoted queries. Our User entity uses
     `#[ORM\Table(name: 'app_user')]`. The migration that creates the
-    schema must use the same quoted/unquoted name.
+    schema must use the same quoted/unquoted name. The `User` entity
+    lives at `App\Entity\Administration\User` (under the Administration
+    module, because admins manage it).
 12. **Never define a permission string anywhere except `App\Security\Permission`.**
     The catalog is the canonical source of truth. The seed migration and
     fixtures iterate `Permission::all()`; the voter matches by exact string
@@ -86,60 +90,133 @@ In priority order. If you find yourself about to violate one of these, stop.
 
 ---
 
-## Layout — only the dirs you'll touch
+## Layout — modules, type-first
+
+The project is organised by **module**, not by entity type. Each module owns
+its own `Controller/`, `Entity/`, `Form/`, `Repository/`, etc. **under a
+single top-level namespace per type** — `App\Controller\Administration\…`,
+`App\Entity\Administration\…`, etc. Shared/horizontal concerns live at the
+type root (`App\Controller\AbstractCrudController`, `App\Twig\UserAvatarExtension`,
+etc.).
 
 ```
-src/Controller/      Symfony controllers, PSR-4 App\Controller\
-  ├── Admin/          Backoffice controllers. AbstractCrudController is the shared base.
-  └── Security/       LoginController, AccountConfirmationController, LogoutController.
+src/
+├── Command/Dev/                       [shared] TestEmailCommand
+├── Controller/
+│   ├── AbstractCrudController.php     [shared horizontal] CRUD base
+│   ├── HomeController.php             [shared] public homepage
+│   ├── Account/                       [Account module] self-service
+│   │   ├── ProfileSettingsController.php
+│   │   └── SecuritySettingsController.php
+│   ├── Administration/                [Administration module] user/role/permission CRUD + impersonation
+│   │   ├── ImpersonateController.php
+│   │   ├── PermissionController.php
+│   │   ├── RoleController.php
+│   │   └── UserController.php
+│   ├── Backoffice/                    [Backoffice module] chrome
+│   │   └── DashboardController.php
+│   └── Security/                      [Security module] auth flow
+│       ├── AccountConfirmationController.php
+│       ├── LoginController.php
+│       └── LogoutController.php
+├── DataFixtures/
+│   ├── AppFixtures.php                [shared] orchestrator
+│   ├── Account/                       [empty — reserved]
+│   ├── Administration/                PermissionFixtures, RoleFixtures, UserFixtures
+│   ├── Backoffice/                    [empty — reserved]
+│   └── Security/                      [empty — reserved]
+├── Entity/
+│   ├── Account/                       [empty — reserved]
+│   ├── Administration/                Permission, Role, User
+│   ├── Backoffice/                    [empty — reserved]
+│   └── Security/                      AccountConfirmationToken
+├── Form/
+│   ├── Account/                       ChangePasswordFormType
+│   ├── Administration/                RoleType, UserType
+│   ├── Backoffice/                    [empty — reserved]
+│   └── Security/                      AccountPasswordFormType
+├── Mailer/
+│   └── Security/                      AccountMailer
+├── Repository/
+│   ├── Account/                       [empty]
+│   ├── Administration/                PermissionRepository, RoleRepository, UserRepository
+│   ├── Backoffice/                    [empty]
+│   └── Security/                      AccountConfirmationTokenRepository
+├── Security/                          [top-level — cross-cutting]
+│   ├── Permission.php                 central catalog (PERMISSION_*, all(), isValid())
+│   └── PermissionVoter.php            universal voter (matches PERMISSION_*)
+├── Service/
+│   ├── Account/                       VerifyCurrentPassword
+│   ├── Administration/                [empty]
+│   ├── Backoffice/                    [empty]
+│   └── Security/
+│       ├── UserStateChecker.php       firewall gate (was in App\Security)
+│       └── UserLifecycle/             all state-machine + token services
+└── Twig/
+    ├── UserAvatarExtension.php        [shared]
+    └── Administration/
+        └── ImpersonationExtension.php
 
-src/Entity/           Doctrine entities, attribute mapping.
-                      Current: User (table: app_user), Role, Permission,
-                      AccountConfirmationToken.
-
-src/Repository/       Custom repositories.
-                      Current: UserRepository, RoleRepository, PermissionRepository,
-                      AccountConfirmationTokenRepository.
-
-src/Security/         Permission.php — canonical catalog (PERMISSION_*, all(), isValid()).
-                      PermissionVoter.php — is_granted backup for PERMISSION_* attributes.
-                      UserStateChecker.php — login firewall gate, blocks Disabled users.
-
-src/Service/          UserLifecycle/ — state-machine dispatchers + token issuer/
-                      validator/invalidator (see "User lifecycle" below).
-
-src/Controller/Account/  Self-service user-facing controllers (no RBAC).
-                         Current: ProfileController (GET /account/profile).
-
-src/Form/             Symfony form types. PSR-4 App\Form\
-                      Current: UserType, RoleType, AccountPasswordFormType.
-
-src/Twig/             Twig extensions. PSR-4 App\Twig\
-                      Current: ImpersonationExtension (is_impersonating,
-                      impersonator_email), UserAvatarExtension (user_avatar_color,
-                      user_initials).
-
-src/Mailer/           AccountMailer.php — TemplatedEmail wrapper for the lifecycle
-                      notifications (confirmation / activated / disabled).
-
-templates/            Twig. base.html.twig is the public-site layout; every page extends it.
-  ├── form/theme.html.twig    Tailwind form theme (overrides form_div_layout blocks).
-  ├── security/               login, confirm, confirm_invalid.
-  ├── admin/                  base + _sidebar (permission-gated nav).
-  │   ├── crud/               SHARED CRUD PARTIALS — see §"Shared Twig CRUD base" below.
-  │   ├── dashboard/          Backoffice home (greeting + permission-gated tile grid).
-  │   ├── role/ user/ permission/  CRUD screens — thin wrappers around the CRUD partials.
-  └── emails/                HTML+TXT lifecycle email templates (translatable).
+templates/                              [mirrors the module split]
+├── base.html.twig                      [shared] public-site layout
+├── _avatar.html.twig                   [shared]
+├── _state_pill.html.twig               [shared]
+├── form/theme.html.twig                [shared] Tailwind form theme
+├── home/index.html.twig                [shared] public homepage
+├── shared/crud/                        [shared horizontal] CRUD partials
+│   ├── _breadcrumbs.html.twig
+│   ├── _delete_form.html.twig
+│   ├── _empty_state.html.twig
+│   ├── _form.html.twig
+│   ├── _list.html.twig
+│   └── _row_actions.html.twig
+├── backoffice/                         [Backoffice module — chrome]
+│   ├── base.html.twig
+│   ├── _sidebar.html.twig
+│   ├── _nav_macros.html.twig
+│   └── dashboard/index.html.twig
+├── account/                            [Account module — self-service]
+│   ├── base.html.twig
+│   ├── _menu.html.twig, _menu_group.html.twig, _section.html.twig,
+│   │   _back_link.html.twig, _profile_header.html.twig
+│   ├── index.html.twig
+│   └── change_password.html.twig
+├── administration/                     [Administration module — CRUD]
+│   ├── permission/list.html.twig
+│   ├── role/{list,new,edit,view}.html.twig
+│   └── user/{list,new,edit,edit_roles,view}.html.twig
+└── security/                           [Security module]
+    ├── login.html.twig, confirm.html.twig, confirm_invalid.html.twig
+    └── emails/                         account-lifecycle templates
+        ├── activated.{html,txt}.twig
+        ├── confirmation.{html,txt}.twig
+        └── disabled.{html,txt}.twig
 
 config/packages/      Per-bundle configs. Symfony Flex writes via `###> pkg ###`
                       markers — **preserve them** so recipes stay idempotent on reinstall.
 config/routes/        Route imports only. Controllers are auto-discovered via attributes.
-migrations/           Doctrine migrations. Committed.
-translations/         Email i18n only (en + es in messages.{en,es}.yaml).
+migrations/           Doctrine migrations. Committed (flat — Doctrine convention).
+translations/
+├── shared/, account/, administration/, backoffice/, security/   per-module
+│   └── security/messages.{en,es}.yaml   currently the only translations (emails)
 docker/               Dockerfile support files (opcache, apcu). NOT in .dockerignore.
 apache/               vhost config. NOT in .dockerignore.
 .opencode/skills/     Skills, including frontend-design aesthetic guidance.
 ```
+
+Module map:
+
+| Module | Owns |
+|---|---|
+| **Administration** | Backoffice CRUD for User, Role, Permission + impersonation. Includes the `User` entity itself (admin-managed). |
+| **Account** | Self-service: profile view, change-password. Anything under `/account/*` that the user does for themselves. |
+| **Security** | Auth flow: login, logout, account-confirmation, token issuance, state machine, login throttling. Owns the universal `PermissionVoter`, the central `Permission` catalog (at `App\Security\`), and `UserStateChecker`. |
+| **Backoffice** | Backoffice chrome: dashboard landing, layout, sidebar nav, nav renderer. |
+| **Shared** | Anything that spans ≥2 modules: `AbstractCrudController`, CRUD partials, `HomeController`, `UserAvatarExtension`, `Dev\TestEmailCommand`, `AppFixtures`. Lives at the type root (`src/Controller/`, `src/Twig/`, etc.) and at the top-level namespace (`App\Controller`, `App\Twig`). |
+
+When new business-domain entities (Listings, Properties, Leads) arrive, each
+gets its own module — not a "Business" bucket. The module name should match
+the domain concept.
 
 Everything else (`bin/`, `vendor/`, `var/`, `public/index.php`, `config/bundles.php`,
 `config/services.yaml`, `config/routes.yaml`, `src/Kernel.php`) is generated
@@ -176,7 +253,9 @@ URLs once running:
 
 - App (public):  <http://localhost:8000>
 - Login:         <http://localhost:8000/login>
-- Backoffice:    <http://localhost:8000/admin>  (auth required)
+- Dashboard:     <http://localhost:8000/dashboard>  (auth required)
+- Admin (CRUD):  <http://localhost:8000/admin/users>, `/admin/roles`, `/admin/permissions`
+- Profile:       <http://localhost:8000/account/profile-settings>
 - Mailpit (dev): <http://localhost:8025>  (SMTP capture UI)
 - Vite:          <http://localhost:5173>  (only when `npm run dev` is running)
 - DB:            `127.0.0.1:5432` from host, `database:5432` from inside containers
@@ -271,10 +350,11 @@ voter, `getRoles()` still saves you. Either alone is correct.
 Every entity that needs full CRUD (list, new, edit, delete) reuses these
 moving parts:
 
-### `src/Controller/Admin/AbstractCrudController.php`
+### `src/Controller/AbstractCrudController.php`
 
-A reusable controller that implements `index`, `new`, `edit`, `delete`.
-A concrete controller extends it and supplies a small contract:
+A reusable controller that implements `list`, `new`, `edit`, `delete` (the
+read-write verbs). Read-only details live on a `view` route. A concrete
+controller extends it and supplies a small contract:
 `getEntityClass()`, `getFormType()`, `getTemplatePrefix()`,
 `getRoutePrefix()`, `getListColumns()`, `getRequiredPermission()`,
 `getEntityLabel()`, `getEntityDisplayName()`, `findEntity()`,
@@ -286,12 +366,12 @@ the per-method calls inside the parent use
 `denyAccessUnlessGranted($this->getRequiredPermission())` as a defence in
 depth.
 
-### `templates/admin/crud/_*.twig`
+### `templates/shared/crud/_*.twig`
 
 Reusable partials. Each takes a documented contract of variables. To add
 a new entity with full CRUD you only need four thin templates:
 
-- `templates/<entity>/index.html.twig` — wraps `_list.html.twig`
+- `templates/<entity>/list.html.twig` — wraps `_list.html.twig`
 - `templates/<entity>/new.html.twig` — wraps `_form.html.twig`
 - `templates/<entity>/edit.html.twig` — wraps `_form.html.twig`
 - `templates/<entity>/view.html.twig` — read-only details page; uses the
@@ -304,7 +384,7 @@ a new entity with full CRUD you only need four thin templates:
 controller overrides to label the entity in breadcrumbs and titles
 (e.g. User returns `name ?? email`; Role returns `name`).
 
-See `templates/admin/role/{index,new,edit,view}.html.twig` for the
+See `templates/administration/role/{list,new,edit,view}.html.twig` for the
 reference implementation. The `Role` entity is the canonical example
 of this pattern.
 
@@ -319,21 +399,21 @@ Admins with `PERMISSION_IMPERSONATE_USERS` see a "users" icon (Heroicons
   "admin" = any role with a `PERMISSION_MANAGE_*` grant. Both rejections
   log to the `audit` channel and flash an error.
 - Logs the start (actor, target, IP) to `audit`, then redirects to
-  `/admin?_switch_user=<email>`. Symfony's `SwitchUserListener` catches
+  `/dashboard?_switch_user=<email>`. Symfony's `SwitchUserListener` catches
   it.
 
 Three gates: Symfony's `switch_user` firewall block (gated by the
 permission via `User::getRoles()`), the controller's `#[IsGranted]`, and
 per-request CSRF.
 
-`templates/admin/base.html.twig` renders an **amber banner** while a
+`templates/backoffice/base.html.twig` renders an **amber banner** while a
 `SwitchUserToken` is active, with an "Exit impersonation" button that
 POSTs to `exitImpersonation` (CSRF + audit log).
 
 To add impersonation to a new entity: add `PERMISSION_IMPERSONATE_X` +
 seed migration + fixtures; in the controller, override
 `getImpersonatePath()` (return route name) and `shouldHideImpersonate($entity)`
-(return `true` to suppress specific rows). `AbstractCrudController::index()`
+(return `true` to suppress specific rows). `AbstractCrudController::list()`
 auto-generates per-row CSRF tokens when `getImpersonatePath()` is non-null.
 
 **Audit channel:** `monolog` channel `audit` writes to `var/log/audit.log`
@@ -354,7 +434,7 @@ Accounts have three states, stored as constant-name strings on `app_user.state`:
 Constants are the source of truth — every reference in PHP must use `User::USER_STATE_*`.
 The DB CHECK constraint and the migration that creates it are generated from the same list.
 
-State transitions go through `App\Service\UserLifecycle\*` services, **never directly
+State transitions go through `App\Service\Security\UserLifecycle\*` services, **never directly
 on the entity** (the entity is pure data; services orchestrate validations + side-effects
 + audit). The shape:
 
@@ -382,24 +462,27 @@ plus a CHECK-constraint migration.
 1. Admin creates a user via `/admin/users/new`. The form has no password field.
    `onCreateSuccess` calls `UserStateTransitionService::resendConfirmation()`,
    which issues a token and emails `/account/confirm?selector=…&secret=…`.
-2. User clicks → `AccountConfirmationController` → `AccountPasswordFormType`. Submit
-   calls `ChangeUserStateToActive::execute($user, $plainPassword)`, which hashes
-   the password, sets state, sends the "activated" notification, consumes the token.
-3. User logs in. `UserStateChecker::checkPreAuth` blocks Disabled users. (Symfony's
-   `AuthenticatorManager` converts `DisabledException` to a generic "Invalid
-   credentials" message to prevent user enumeration — intentional.)
+2. User clicks → `AccountConfirmationController` → `App\Form\Security\AccountPasswordFormType`.
+   Submit calls `ChangeUserStateToActive::execute($user, $plainPassword)`,
+   which hashes the password, sets state, sends the "activated"
+   notification, consumes the token.
+3. User logs in. `App\Service\Security\UserStateChecker::checkPreAuth`
+   blocks Disabled users. (Symfony's `AuthenticatorManager` converts
+   `DisabledException` to a generic "Invalid credentials" message to
+   prevent user enumeration — intentional.)
 
-Email change while Pending: the `POST_SUBMIT` listener on `UserType` detects the
-email change and calls `resendConfirmation()` to invalidate old tokens and send a
-fresh link to the new address.
+Email change while Pending: the `POST_SUBMIT` listener on `App\Form\Administration\UserType`
+detects the email change and calls `resendConfirmation()` to invalidate old
+tokens and send a fresh link to the new address.
 
-**Password policy:** `AccountPasswordFormType` enforces `Length min: 5` (no
-PasswordStrength constraint). The service layer (`ChangeUserStateToActive`) also
-enforces the same minimum as defence in depth. The policy is enforced **only on
-set/reset** — existing hashes (including the test user's `test`) are grandfathered.
+**Password policy:** `App\Form\Security\AccountPasswordFormType` enforces `Length min: 5`
+(no PasswordStrength constraint). The service layer (`ChangeUserStateToActive`)
+also enforces the same minimum as defence in depth. The policy is enforced
+**only on set/reset** — existing hashes (including the test user's `test`)
+are grandfathered.
 
-i18n scope: **the email templates only** (`templates/emails/`).
-Translations live in `translations/messages.<locale>.yaml` (en + es).
+i18n scope: **the email templates only** (`templates/security/emails/`).
+Translations live in `translations/security/messages.<locale>.yaml` (en + es).
 Admin/login forms stay English by design.
 
 ### Dev mail capture (Mailpit)
@@ -435,15 +518,16 @@ Override that block to restyle all of them in one go.
 
 ## Adding a new page
 
-For a non-CRUD public page: `src/Controller/FooController.php` (extends
-`AbstractController`, has `#[Route('/foo', name: 'app_foo')]`) + a thin
-`templates/foo/index.html.twig` that extends `base.html.twig`. Then
-`npm run build` (or have `npm run dev` running) so any new Tailwind
+For a non-CRUD public page: place the controller in the relevant module's
+`Controller/` folder (e.g. `App\Controller\Account\FooController`), extend
+`AbstractController`, add `#[Route('/foo', name: '<module>_foo')]`, and a
+thin `templates/<module>/foo/index.html.twig` that extends `base.html.twig`.
+Then `npm run build` (or have `npm run dev` running) so any new Tailwind
 classes pick up. Verify the route with
-`docker compose exec php bin/console debug:router | grep app_foo`.
+`docker compose exec php bin/console debug:router | grep <module>_foo`.
 
 For a new entity with full CRUD see "Shared Twig CRUD base" above and
-follow the `Role` / `templates/admin/role/` pattern.
+follow the `Role` / `templates/administration/role/` pattern.
 
 ---
 
@@ -505,12 +589,16 @@ Postgres is `identity` (configured in `config/packages/doctrine.yaml`).
   so recipes stay idempotent on reinstall.
 - **Twig:** use blocks from `base.html.twig` (`title`, `body`, `stylesheets`,
   `javascripts`) for public pages. For backoffice pages, extend
-  `admin/base.html.twig` (which itself extends `base.html.twig`).
+  `backoffice/base.html.twig` (which itself extends `base.html.twig`).
+  For account/profile pages, extend `account/base.html.twig`.
 - **Tailwind:** utility classes only. Don't add a CSS file outside
   `assets/styles/app.css`. Extend the theme in `tailwind.config.js`, not with
   custom CSS.
 - **Routing:** PHP attributes on controller methods (`#[Route('/path',
-  name: 'app_xxx')]`). `config/routes.yaml` is for imports only.
+  name: '<module>_<verb>')]`). Internal route names use the full module
+  word (e.g. `administration_user_list`, `security_login`); URL paths
+  use a shorter conventional prefix where appropriate (`/admin/users`,
+  `/login`). `config/routes.yaml` is for imports only.
 - **Twig imports:** if you need new entry tags, use the `pentatrion_vite`
   functions (`vite_entry_link_tags`, `vite_entry_script_tags`,
   `vite_entry_asset`, `vite_mode`).
@@ -540,8 +628,8 @@ brand matures.** The full aesthetic philosophy is in
 
 - **Layout**: two-column — fixed `w-64` sidebar on the left, scrollable
   content area on the right. The sidebar lives in
-  `templates/admin/_sidebar.html.twig` and is shared across every
-  backoffice page via `admin/base.html.twig`.
+  `templates/backoffice/_sidebar.html.twig` and is shared across every
+  backoffice page via `backoffice/base.html.twig`.
 - **Sidebar items are permission-gated** via a single config-driven
   macro; see the "Backoffice sidebar nav" subsection below. A
   `ROLE_USER` (view only) sees only Dashboard + Sign out — the
@@ -567,8 +655,8 @@ single-row edit.
 
 | File | Role |
 |---|---|
-| `templates/admin/_sidebar.html.twig` | Declares `nav_groups` (pure data — `label`, `items`, with item fields `label`, `route`, `route_prefix`, `permission`, `icon`). Owns the outer chrome (logo, footer chip, sign-out). Imports the macros and iterates the groups. |
-| `templates/admin/_nav_macros.html.twig` | **Renderer.** Three macros — `nav_item`, `nav_group`, `icon_d` (last is private to the renderer; exposes the Heroicons `d=` strings). No data here. |
+| `templates/backoffice/_sidebar.html.twig` | Declares `nav_groups` (pure data — `label`, `items`, with item fields `label`, `route`, `route_prefix`, `permission`, `icon`). Owns the outer chrome (logo, footer chip, sign-out). Imports the macros and iterates the groups. |
+| `templates/backoffice/_nav_macros.html.twig` | **Renderer.** Three macros — `nav_item`, `nav_group`, `icon_d` (last is private to the renderer; exposes the Heroicons `d=` strings). No data here. |
 
 **Item schema.** `permission` is the `App\Security\Permission::*` constant
 *name without the class prefix* (e.g. `'PERMISSION_MANAGE_USERS'`) or
@@ -590,6 +678,8 @@ seeing no Administration group at all.
 group's `items` in `_sidebar.html.twig`. To add a new icon, append
 its Heroicons `d=` string to the `icon_d` macro in
 `_nav_macros.html.twig` and reference the key from the config.
+Backoffice nav items reference `administration_*` route names today;
+add a `permission_class` field per item if you need to span modules.
 
 ### Technical conventions
 
@@ -618,9 +708,9 @@ and a neutral scale. Register them in Tailwind's `theme.extend.colors`._
 beyond what Vite already does. Icons are inlined as SVG in the template
 that uses them, sized `h-4 w-4` and color-tinted via `stroke="currentColor"`
 plus a `text-*` utility. New CRUD entities should use the canonical row
-actions in `templates/admin/crud/_row_actions.html.twig` — adding a new
+actions in `templates/shared/crud/_row_actions.html.twig` — adding a new
 per-row action means either (a) extending the partial or (b) overriding
-the `crud_list_actions` block in the entity's `index.html.twig`. Don't
+the `crud_list_actions` block in the entity's `list.html.twig`. Don't
 introduce a second icon set.
 
 | Action       | Icon            | Color (Tailwind)  | Used as                                |

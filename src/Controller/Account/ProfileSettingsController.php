@@ -28,9 +28,9 @@ use Symfony\Component\Security\Http\Attribute\IsGranted;
 #[IsGranted('IS_AUTHENTICATED_FULLY')]
 final class ProfileSettingsController extends AbstractController
 {
-    #[Route('/account/profile-settings', name: 'app_account_profile_settings', methods: ['GET'])]
+    #[Route('/account/profile-settings', name: 'account_profile_settings', methods: ['GET'])]
     public function __invoke(): Response
     {
-        return $this->render('account/profile_settings/index.html.twig');
+        return $this->render('account/index.html.twig');
     }
 }

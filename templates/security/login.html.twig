@@ -30,7 +30,7 @@
                     </div>
                 {% endif %}
 
-                <form method="post" action="{{ path('app_login') }}" class="space-y-4">
+                <form method="post" action="{{ path('security_login') }}" class="space-y-4">
                     <input type="hidden" name="_csrf_token" value="{{ csrf_token('authenticate') }}">
 
                     <div>

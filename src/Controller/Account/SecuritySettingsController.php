@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Controller\Account;
 
-use App\Entity\User;
+use App\Entity\Administration\User;
 use App\Form\Account\ChangePasswordFormType;
 use App\Service\Account\VerifyCurrentPassword;
 use Doctrine\ORM\EntityManagerInterface;
@@ -47,8 +47,8 @@ final class SecuritySettingsController extends AbstractController
     ) {
     }
 
-    #[Route('/account/profile-settings/change-password',
-        name: 'app_account_profile_settings_change_password',
+    #[Route('/account/change-password',
+        name: 'account_change_password',
         methods: ['GET', 'POST'])]
     public function __invoke(Request $request): Response
     {
@@ -66,7 +66,7 @@ final class SecuritySettingsController extends AbstractController
 
             if (!$this->verifyCurrent->verify($user, $current)) {
                 $form->get('currentPassword')->addError(new FormError('Current password is incorrect.'));
-                return $this->render('account/profile_settings/change_password.html.twig', ['form' => $form]);
+                return $this->render('account/change_password.html.twig', ['form' => $form]);
             }
 
             $user->setPassword($this->hasher->hashPassword($user, $new));
@@ -79,9 +79,9 @@ final class SecuritySettingsController extends AbstractController
             ]);
 
             $this->addFlash('success', 'Password updated.');
-            return $this->redirectToRoute('app_account_profile_settings_change_password');
+            return $this->redirectToRoute('account_change_password');
         }
 
-        return $this->render('account/profile_settings/change_password.html.twig', ['form' => $form]);
+        return $this->render('account/change_password.html.twig', ['form' => $form]);
     }
 }

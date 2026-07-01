@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace App\Controller\Security;
 
-use App\Entity\User;
-use App\Form\AccountPasswordFormType;
-use App\Service\UserLifecycle\AccountTokenValidator;
-use App\Service\UserLifecycle\ChangeUserStateToActive;
+use App\Entity\Administration\User;
+use App\Form\Security\AccountPasswordFormType;
+use App\Service\Security\UserLifecycle\AccountTokenValidator;
+use App\Service\Security\UserLifecycle\ChangeUserStateToActive;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
@@ -37,7 +37,7 @@ final class AccountConfirmationController extends AbstractController
     ) {
     }
 
-    #[Route('/account/confirm', name: 'app_account_confirm', methods: ['GET', 'POST'])]
+    #[Route('/account/confirm', name: 'security_account_confirm', methods: ['GET', 'POST'])]
     public function __invoke(Request $request): Response
     {
         $selector = (string) $request->query->get('selector', '');
@@ -82,7 +82,7 @@ final class AccountConfirmationController extends AbstractController
             }
 
             $this->addFlash('success', 'Password set. You can now sign in.');
-            return $this->redirectToRoute('app_login');
+            return $this->redirectToRoute('security_login');
         }
 
         return $this->render('security/confirm.html.twig', [

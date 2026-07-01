@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace App\DataFixtures;
 
+use App\DataFixtures\Administration\PermissionFixtures;
+use App\DataFixtures\Administration\RoleFixtures;
+use App\DataFixtures\Administration\UserFixtures;
 use Doctrine\Bundle\FixturesBundle\Fixture;
 use Doctrine\Common\DataFixtures\DependentFixtureInterface;
 use Doctrine\Persistence\ObjectManager;
