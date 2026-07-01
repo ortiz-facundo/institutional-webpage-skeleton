@@ -1,0 +1,61 @@
+{#
+    Grouped settings menu — the data file + the renderer entry point.
+
+    Adding a new settings item:
+      1. Append a row to the matching group's `items` array below, with
+         `enabled: true` once the controller + template exist.
+      2. Until then, leave `enabled: false` so the row renders as a
+         greyed-out "soon" hint rather than a broken link. The disabled
+         branch never calls `path()` so non-existent routes are safe.
+
+    Adding a new group:
+      1. Append a new entry to the `groups` array.
+
+    Item schema:
+      label:   string           visible text
+      route:   string           Symfony route name (passed to path() when enabled)
+      enabled: bool = true      false → render as greyed-out "soon" placeholder
+
+    Group schema:
+      label:   string           visible group heading (uppercase, small)
+#}
+{% set current_route = current_route|default(app.request.attributes.get('_route')) %}
+{% set groups = [
+    {
+        label: 'Account',
+        items: [
+            {label: 'Edit profile', route: 'app_account_profile_settings_edit_profile', enabled: false},
+        ],
+    },
+    {
+        label: 'Security',
+        items: [
+            {label: 'Change password',         route: 'app_account_profile_settings_change_password',         enabled: true},
+            {label: 'Active sessions',         route: 'app_account_profile_settings_active_sessions',         enabled: false},
+            {label: 'Two-factor authentication', route: 'app_account_profile_settings_two_factor',           enabled: false},
+        ],
+    },
+    {
+        label: 'Preferences',
+        items: [
+            {label: 'Locale & timezone', route: 'app_account_profile_settings_preferences_locale', enabled: false},
+            {label: 'Notifications',     route: 'app_account_profile_settings_preferences_notifications', enabled: false},
+        ],
+    },
+    {
+        label: 'Danger zone',
+        items: [
+            {label: 'Disable account', route: 'app_account_profile_settings_disable', enabled: false},
+        ],
+    },
+] %}
+
+{% import 'account/profile_settings/_menu_group.html.twig' as menu %}
+
+<div class="rounded-lg border border-stone-200 bg-white px-3 py-4 shadow-sm">
+    <div class="space-y-6">
+        {% for group in groups %}
+            {{ menu.menu_group(group, current_route) }}
+        {% endfor %}
+    </div>
+</div>

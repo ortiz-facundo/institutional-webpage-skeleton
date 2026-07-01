@@ -1,0 +1,11 @@
+{% extends 'account/profile_settings/base.html.twig' %}
+
+{# Hub. Inherits h1 + subtitle + profile header from base. #}
+
+{% block settings_content %}
+    <div class="mb-4 flex items-baseline justify-between">
+        <h2 class="font-serif text-xl text-stone-900">Settings</h2>
+        <p class="text-xs text-stone-400">Select a config item below.</p>
+    </div>
+    {% include 'account/profile_settings/_menu.html.twig' %}
+{% endblock %}

@@ -1,0 +1,36 @@
+{#
+    Generic settings-section card wrapper. Every section page embeds
+    this and fills the `section_content` block.
+
+    Contract:
+      @var title       string|null           section heading (visible <h2>).
+                                            When null/empty, the header is
+                                            omitted entirely — useful when a
+                                            breadcrumb already names the
+                                            section.
+      @var description string|null           optional helper line under the heading.
+                                            Rendered alone (without an <h2>)
+                                            when there is no title but a
+                                            description to show.
+      Block:           section_content       the section's body (forms, etc.)
+
+    Visual: matches the profile header card's recipe
+    (`rounded-lg border border-stone-200 bg-white p-8 shadow-sm`) so
+    every settings section looks consistent with the hub.
+#}
+<div class="rounded-lg border border-stone-200 bg-white p-8 shadow-sm">
+    {% if title is defined and title %}
+        <header class="mb-6">
+            <h2 class="font-serif text-xl text-stone-900">{{ title }}</h2>
+            {% if description is defined and description %}
+                <p class="mt-1 text-sm text-stone-500">{{ description }}</p>
+            {% endif %}
+        </header>
+    {% elseif description is defined and description %}
+        <header class="mb-6">
+            <p class="text-sm text-stone-500">{{ description }}</p>
+        </header>
+    {% endif %}
+
+    {% block section_content %}{% endblock %}
+</div>

@@ -45,9 +45,13 @@ security:
     access_control:
         - { path: ^/login,             roles: PUBLIC_ACCESS }
         - { path: ^/account/confirm,  roles: PUBLIC_ACCESS }
-        # Self-service profile page. Any logged-in user (incl. ROLE_USER-only
-        # viewers) can see their own profile. No permission required — read-only.
-        - { path: ^/account/profile,   roles: IS_AUTHENTICATED_FULLY }
+        # Self-service Profile & Settings page (hub + every section under it,
+        # e.g. /account/profile-settings/change-password). Any logged-in user
+        # (incl. ROLE_USER-only viewers) can see their own profile and any
+        # section that they themselves are eligible for. No permission
+        # required at the access-control level — per-section gating is the
+        # controller's job (defence in depth).
+        - { path: ^/account/profile-settings,  roles: IS_AUTHENTICATED_FULLY }
         - { path: ^/admin,             roles: IS_AUTHENTICATED_FULLY }
 
 when@test:

@@ -1,0 +1,43 @@
+{#
+    Settings-menu group renderer. One macro that renders a group's
+    heading + the items list. Two item states:
+      - enabled: a real <a href="{{ path(item.route) }}"> with active-state highlighting
+      - disabled: a greyed-out <span> with "soon" hint; never calls path()
+
+    Visual mirrors the backoffice sidebar's group treatment: small
+    uppercase stone-400 heading with a hairline border below, then the
+    items in a vertical list with active item highlighted in stone-900.
+#}
+{% macro menu_group(group, current_route) %}
+    {% if group.items|length > 0 %}
+        <div>
+            <h3 class="px-3 pb-2 text-[0.6875rem] font-medium uppercase tracking-wider text-stone-400 border-b border-stone-200">
+                {{ group.label }}
+            </h3>
+            <ul class="mt-2 space-y-1">
+                {% for item in group.items %}
+                    {% set active = current_route starts with item.route %}
+                    {% if item.enabled %}
+                        <li>
+                            <a href="{{ path(item.route) }}"
+                               aria-current="{{ active ? 'page' : 'false' }}"
+                               class="flex items-center justify-between rounded-md px-3 py-2 text-sm font-medium {{ active ? 'bg-stone-900 text-stone-50' : 'text-stone-700 hover:bg-stone-100' }}">
+                                <span>{{ item.label }}</span>
+                                <span aria-hidden="true"
+                                      class="text-base {{ active ? 'text-stone-300' : 'text-stone-400' }}">&rsaquo;</span>
+                            </a>
+                        </li>
+                    {% else %}
+                        <li>
+                            <span class="flex items-center justify-between rounded-md px-3 py-2 text-sm font-medium text-stone-400"
+                                  title="Coming soon">
+                                <span>{{ item.label }}</span>
+                                <span class="text-[0.625rem] font-medium uppercase tracking-wider">soon</span>
+                            </span>
+                        </li>
+                    {% endif %}
+                {% endfor %}
+            </ul>
+        </div>
+    {% endif %}
+{% endmacro %}
