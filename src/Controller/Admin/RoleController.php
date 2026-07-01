@@ -48,9 +48,8 @@ final class RoleController extends AbstractCrudController
     protected function getListColumns(): array
     {
         return [
-            ['label' => '#',          'path' => 'id'],
-            ['label' => 'Name',       'path' => 'name',     'class' => 'font-mono text-xs'],
-            ['label' => '# perms',    'path' => 'permissions', 'class' => 'text-stone-500'],
+            ['label' => 'Name',     'path' => 'name',        'class' => 'font-mono text-xs'],
+            ['label' => '# perms',  'path' => 'permissions', 'class' => 'text-stone-500'],
         ];
     }
 
