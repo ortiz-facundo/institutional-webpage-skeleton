@@ -1,0 +1,16 @@
+# Administration module — validator messages
+#
+# The Symfony FrameworkBundle defaults the validator's translation domain
+# to `validators` (see FrameworkExtension::validator(), which sets
+# `validator.translation_domain` to 'validators'). Constraint messages
+# attached to entities / forms declared under App\Entity\Administration\
+# are translated through this domain.
+#
+# Keys here use the `app.<entity>.<field>.<error>` convention so future
+# entity-level additions don't collide with the keys shipped inside
+# `vendor/symfony/validator/Resources/translations/validators.<locale>.xlf`.
+
+app:
+    user:
+        email:
+            duplicate: 'This email is already in use.'

@@ -1,0 +1,8 @@
+# Administration module — mensajes del validador
+# Véase `validators.en.yaml` para el contexto. Mantén las claves alineadas
+# entre locales al añadir entradas nuevas.
+
+app:
+    user:
+        email:
+            duplicate: 'Este correo electrónico ya está en uso.'
