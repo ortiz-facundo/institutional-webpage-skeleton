@@ -38,23 +38,7 @@
                 </dd>
 
                 <dt class="text-stone-500">Account state</dt>
-                <dd>
-                    {% if user.state == 'USER_STATE_ACTIVE' %}
-                        <span class="inline-flex items-center gap-1 rounded-md bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700">
-                            Active
-                        </span>
-                    {% elseif user.state == 'USER_STATE_PENDING' %}
-                        <span class="inline-flex items-center gap-1 rounded-md bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700">
-                            Pending confirmation
-                        </span>
-                    {% elseif user.state == 'USER_STATE_DISABLED' %}
-                        <span class="inline-flex items-center gap-1 rounded-md bg-rose-50 px-2 py-0.5 text-xs font-medium text-rose-700">
-                            Disabled
-                        </span>
-                    {% else %}
-                        <span class="text-xs text-stone-500">{{ user.state }}</span>
-                    {% endif %}
-                </dd>
+                <dd>{% include '_state_pill.html.twig' with {state: user.state} only %}</dd>
             </dl>
         </div>
     </div>

@@ -62,6 +62,20 @@ abstract class AbstractCrudController extends AbstractController
     abstract protected function newEntity(): object;
 
     /**
+     * Per-context options passed to `createForm()`. Default is empty;
+     * subclasses override to inject form options that depend on whether
+     * we're rendering the create form vs the edit form (e.g. hiding a
+     * field on create). The third arg of `createForm()` is forwarded
+     * straight to the form type's `configureOptions()`.
+     *
+     * @return array<string, mixed>
+     */
+    protected function getFormOptions(bool $isCreate): array
+    {
+        return [];
+    }
+
+    /**
      * Hook for subclasses to mutate the entity after the form binds and
      * before it is persisted (create) or flushed (edit). Default is a no-op.
      *
@@ -82,6 +96,19 @@ abstract class AbstractCrudController extends AbstractController
      */
     protected function onCreateSuccess(object $entity): void
     {
+    }
+
+    /**
+     * Success-flash message shown after a successful create. Default:
+     * "{Entity label} created." Subclasses can override to add context
+     * (e.g. the recipient of a confirmation email). Return null to
+     * suppress the generic flash entirely — useful when `onCreateSuccess`
+     * already added its own success flash and you don't want both to
+     * show up.
+     */
+    protected function getCreatedFlashMessage(object $entity): ?string
+    {
+        return $this->getEntityLabel() . ' created.';
     }
 
     /**
@@ -219,7 +246,7 @@ abstract class AbstractCrudController extends AbstractController
         $this->denyAccessUnlessGranted($this->getRequiredPermission());
 
         $entity = $this->newEntity();
-        $form = $this->createForm($this->getFormType(), $entity);
+        $form = $this->createForm($this->getFormType(), $entity, $this->getFormOptions(true));
         $form->handleRequest($request);
 
         if ($form->isSubmitted() && $form->isValid()) {
@@ -227,7 +254,14 @@ abstract class AbstractCrudController extends AbstractController
             $this->em->persist($entity);
             $this->em->flush();
             $this->onCreateSuccess($entity);
-            $this->addFlash('success', $this->getEntityLabel() . ' created.');
+
+            // Allow subclasses to override the generic success flash
+            // (e.g. when `onCreateSuccess()` already added a richer one).
+            // Return null to suppress the generic flash entirely.
+            $flash = $this->getCreatedFlashMessage($entity);
+            if ($flash !== null) {
+                $this->addFlash('success', $flash);
+            }
 
             return $this->redirectToRoute($this->getRoutePrefix() . '_index');
         }
@@ -256,7 +290,7 @@ abstract class AbstractCrudController extends AbstractController
             throw $this->createNotFoundException('Entity not found.');
         }
 
-        $form = $this->createForm($this->getFormType(), $entity);
+        $form = $this->createForm($this->getFormType(), $entity, $this->getFormOptions(false));
         $form->handleRequest($request);
 
         if ($form->isSubmitted() && $form->isValid()) {

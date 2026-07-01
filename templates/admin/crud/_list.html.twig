@@ -5,7 +5,15 @@
     Contract:
       @var title             string       page title
       @var items             iterable<object>
-      @var columns           list<{label: string, path: string, class?: string}>
+      @var columns           list<{
+          label:         string,
+          path:          string,
+          class?:        string,
+          cell_partial?: string   template path; when set, the cell is
+                                   rendered by including this partial with
+                                   {value: <resolved path value>} instead
+                                   of printing the raw value as text.
+      }>
       @var empty_message     string
       @var new_path          ?string
       @var new_label         string
@@ -69,7 +77,9 @@
                                         {% set value = v %}
                                     {% endif %}
                                 {% endfor %}
-                                {% if value is iterable %}
+                                {% if col.cell_partial is defined and col.cell_partial %}
+                                    {% include col.cell_partial with {state: value} only %}
+                                {% elseif value is iterable %}
                                     {{ value|length }}
                                 {% else %}
                                     {{ value|default('') }}

@@ -51,14 +51,13 @@ final class UserController extends AbstractCrudController
         return 'admin_user';
     }
 
-    /** @return list<array{label:string,path:string,class?:string}> */
+    /** @return list<array{label:string,path:string,class?:string,cell_partial?:string}> */
     protected function getListColumns(): array
     {
         return [
-            ['label' => '#',     'path' => 'id'],
             ['label' => 'Email', 'path' => 'email'],
             ['label' => 'Name',  'path' => 'name'],
-            ['label' => 'State', 'path' => 'state', 'class' => 'font-mono text-xs'],
+            ['label' => 'State', 'path' => 'state', 'cell_partial' => '_state_pill.html.twig'],
         ];
     }
 
@@ -89,6 +88,19 @@ final class UserController extends AbstractCrudController
     }
 
     /**
+     * The Account-state field is hidden on the create form. Newly
+     * created users always start in USER_STATE_PENDING (the entity's
+     * own default), and the user-lifecycle flow moves them to Active
+     * once they confirm and set a password. Edit keeps the field.
+     *
+     * @return array<string, mixed>
+     */
+    protected function getFormOptions(bool $isCreate): array
+    {
+        return ['show_state' => !$isCreate];
+    }
+
+    /**
      * Called by AbstractCrudController::edit() before flush. If the
      * state changed we go through the lifecycle service (so audit,
      * email-notifier, token invalidation, etc. fire). Email changes
@@ -104,10 +116,11 @@ final class UserController extends AbstractCrudController
         }
 
         if ($isCreate) {
-            // Newly created user starts in Pending. The form's
-            // `default_state` option is set to USER_STATE_PENDING, but
-            // a determined admin could pick Active/Disabled — we
-            // accept that and treat it as a deliberate choice.
+            // Newly created user starts in Pending (the entity's
+            // own default; the form hides the Account-state field on
+            // create, so there is no way to start in a different state
+            // from the UI). State transitions on edit go through the
+            // lifecycle service below.
             return;
         }
 
@@ -126,9 +139,8 @@ final class UserController extends AbstractCrudController
     /**
      * Called by AbstractCrudController::new() after persist+flush.
      * Issues a confirmation token and emails the link to the user
-     * when the new account is Pending. For Active-on-create (rare —
-     * only when admin intentionally skips the invitation flow), no
-     * email is sent because the user is already active.
+     * (new accounts always start in Pending now that the create
+     * form hides the Account-state field).
      */
     protected function onCreateSuccess(object $entity): void
     {
@@ -138,6 +150,25 @@ final class UserController extends AbstractCrudController
         if ($entity->isPending()) {
             $this->stateTransition->resendConfirmation($entity);
         }
+    }
+
+    /**
+     * Replace the generic "User created." flash with one that names the
+     * recipient, so the admin can see at a glance that the confirmation
+     * email went out.
+     */
+    protected function getCreatedFlashMessage(object $entity): ?string
+    {
+        if (!$entity instanceof User) {
+            return parent::getCreatedFlashMessage($entity);
+        }
+        if ($entity->isPending()) {
+            return sprintf(
+                'User created. Confirmation email sent to %s.',
+                $entity->getEmail()
+            );
+        }
+        return parent::getCreatedFlashMessage($entity);
     }
 
     /**
@@ -182,8 +213,9 @@ final class UserController extends AbstractCrudController
      *     the controller too, but hiding it in the UI is clearer);
      *   - any user that already holds a PERMISSION_MANAGE_* permission —
      *     admin-to-admin impersonation is denied by policy;
-     *   - Pending users — they have no password and nothing useful to
-     *     impersonate into.
+     *   - users that are not Active — Pending users have no password
+     *     set and Disabled users are blocked by an admin; either way
+     *     there is nothing useful to impersonate into.
      */
     protected function shouldHideImpersonate(object $entity): bool
     {
@@ -194,10 +226,6 @@ final class UserController extends AbstractCrudController
             return true;
         }
 
-        if ($entity->isPending()) {
-            return true;
-        }
-
         foreach ($entity->getRoleEntities() as $role) {
             foreach ($role->getPermissions() as $perm) {
                 if (str_starts_with($perm->getName(), 'PERMISSION_MANAGE_')) {
@@ -205,6 +233,12 @@ final class UserController extends AbstractCrudController
                 }
             }
         }
+
+        // Only Active users are valid impersonation targets.
+        if (!$entity->isActive()) {
+            return true;
+        }
+
         return false;
     }
 

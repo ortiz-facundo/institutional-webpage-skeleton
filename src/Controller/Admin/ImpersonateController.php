@@ -72,6 +72,25 @@ final class ImpersonateController extends AbstractController
             return $this->redirectToRoute('admin_user_index');
         }
 
+        // Guard: only Active users can be impersonated. Pending users
+        // have no password set; Disabled users are blocked by an admin.
+        // Either way there is nothing useful to impersonate into.
+        if (!$target->isActive()) {
+            $this->auditLogger->warning('impersonation.blocked.target_inactive', [
+                'actor_id'     => $admin?->getId(),
+                'actor_email'  => $admin?->getEmail(),
+                'target_id'    => $target->getId(),
+                'target_email' => $target->getEmail(),
+                'target_state' => $target->getState(),
+            ]);
+            $this->addFlash('error', sprintf(
+                'Cannot impersonate %s — they are not Active (current state: %s).',
+                $target->getEmail(),
+                $target->getState(),
+            ));
+            return $this->redirectToRoute('admin_user_index');
+        }
+
         // Guard: admins cannot impersonate other admins. The original admin
         // could already do everything the target admin can do; the only
         // effect of admin→admin impersonation is to muddy the audit trail.

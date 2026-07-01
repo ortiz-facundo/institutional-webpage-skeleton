@@ -23,9 +23,13 @@ use Symfony\Component\Validator\Constraints as Assert;
  *    passwords — passwords are owned by the user themselves, set via the
  *    /account/confirm flow. The User entity keeps `setPassword()` for
  *    service use (ChangeUserStateToActive) but the form does not.
- *  - State defaults to USER_STATE_PENDING on create. On edit, all three
- *    values are selectable; the state-change side effects (audit,
- *    email, token rotation) are handled in the controller via
+ *  - State defaults to USER_STATE_PENDING on create (the User entity's
+ *    own default). The `state` field is hidden on the create form via
+ *    the `show_state` option (default: true), so admins cannot pick a
+ *    different starting state from the UI — the only way to leave
+ *    Pending on create is the deliberate user-lifecycle flow. On edit,
+ *    all three values are selectable; the state-change side effects
+ *    (audit, email, token rotation) are handled in the controller via
  *    UserStateTransitionService.
  *  - roleEntities is `mapped: false` and diffed in POST_SUBMIT to
  *    sidestep the Doctrine+EntityType data-mapper bug (see the form
@@ -50,7 +54,10 @@ class UserType extends AbstractType
                 'required' => false,
                 'constraints' => [new Assert\Length(max: 120)],
             ])
-            ->add('state', ChoiceType::class, [
+        ;
+
+        if ($options['show_state']) {
+            $builder->add('state', ChoiceType::class, [
                 'choices' => [
                     'Pending'  => User::USER_STATE_PENDING,
                     'Active'   => User::USER_STATE_ACTIVE,
@@ -63,7 +70,6 @@ class UserType extends AbstractType
                 // `$form->get('state')->getData()` to figure out the new
                 // state and dispatches via UserStateTransitionService.
                 'mapped'      => false,
-                'data'        => $options['default_state'],
                 'label'       => 'Account state',
                 'expanded'    => false,
                 'constraints' => [
@@ -74,18 +80,19 @@ class UserType extends AbstractType
                     ]),
                 ],
                 'help'        => 'Pending: created, awaiting confirmation. Active: password set, can log in. Disabled: blocked by an admin.',
-            ])
-            ->add('roleEntities', EntityType::class, [
-                'class'        => \App\Entity\Role::class,
-                'choice_label' => 'name',
-                'choices'      => $this->roles->findBy([], ['name' => 'ASC']),
-                'multiple'     => true,
-                'expanded'     => true,
-                'mapped'       => false,
-                'constraints'  => [new Assert\Count(min: 1, minMessage: 'Assign at least one role.')],
-                'label'        => 'Roles',
-            ])
-        ;
+            ]);
+        }
+
+        $builder->add('roleEntities', EntityType::class, [
+            'class'        => \App\Entity\Role::class,
+            'choice_label' => 'name',
+            'choices'      => $this->roles->findBy([], ['name' => 'ASC']),
+            'multiple'     => true,
+            'expanded'     => true,
+            'mapped'       => false,
+            'constraints'  => [new Assert\Count(min: 1, minMessage: 'Assign at least one role.')],
+            'label'        => 'Roles',
+        ]);
 
         // Pre-populate the roleEntities field with the entity's current
         // roles. POST_SET_DATA runs AFTER the form has propagated its data
@@ -137,11 +144,11 @@ class UserType extends AbstractType
     public function configureOptions(OptionsResolver $resolver): void
     {
         $resolver->setDefaults([
-            'data_class'      => User::class,
-            // Default state shown on the create form. Edit forms
-            // override via the entity's actual state in PRE_SET_DATA / on
-            // form construction.
-            'default_state'   => User::USER_STATE_PENDING,
+            'data_class' => User::class,
+            // Whether to render the Account-state field. The create flow
+            // hides it (the entity's own default of USER_STATE_PENDING is
+            // what gets persisted); the edit flow shows it.
+            'show_state' => true,
         ]);
     }
 }

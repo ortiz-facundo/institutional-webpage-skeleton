@@ -28,6 +28,10 @@
                 <dt class="text-xs font-semibold uppercase tracking-wider text-stone-500">Name</dt>
                 <dd class="mt-1 text-sm text-stone-900">{{ entity.name ?? '—' }}</dd>
             </div>
+            <div>
+                <dt class="text-xs font-semibold uppercase tracking-wider text-stone-500">State</dt>
+                <dd class="mt-1">{% include '_state_pill.html.twig' with {state: entity.state} only %}</dd>
+            </div>
             <div class="sm:col-span-2">
                 <dt class="text-xs font-semibold uppercase tracking-wider text-stone-500">Roles</dt>
                 <dd class="mt-1 flex flex-wrap gap-1">
