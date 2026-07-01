@@ -1,4 +1,4 @@
-# Administration module — validator messages
+# Administration module — validator messages (English, source of truth).
 #
 # The Symfony FrameworkBundle defaults the validator's translation domain
 # to `validators` (see FrameworkExtension::validator(), which sets
@@ -14,3 +14,25 @@ app:
     user:
         email:
             duplicate: 'This email is already in use.'
+        role:
+            min: 'Assign at least one role.'
+        state:
+            invalid: 'Invalid state.'
+    role:
+        name:
+            invalid_format: 'Role names must be UPPER_SNAKE_CASE and start with ROLE_.'
+        permission:
+            min: 'Assign at least one permission.'
+    account:
+        password:
+            # Change-password self-service form.
+            current_required: 'Enter your current password.'
+            new_required: 'Pick a new password.'
+            min: 'Password must be at least %limit% characters.'
+            mismatch: 'Passwords do not match.'
+    security:
+        # Account confirmation form (first-time password set).
+        password:
+            required: 'Pick a password.'
+            min: 'Password must be at least %limit% characters.'
+            mismatch: 'Passwords do not match.'

@@ -1,6 +1,6 @@
 {% extends 'base.html.twig' %}
 
-{% block title %}Set your password — Nova Argentum{% endblock %}
+{% block title %}{{ 'confirm.page_title'|trans }}{% endblock %}
 
 {% block body %}
     <div class="min-h-screen flex items-center justify-center bg-stone-100 px-4 py-12">
@@ -16,8 +16,8 @@
 
             <div class="text-center mb-8">
                 <div class="inline-flex items-center justify-center w-12 h-12 rounded-full bg-stone-900 text-stone-50 text-xl mb-4" aria-hidden="true">&#129689;</div>
-                <h1 class="font-serif text-3xl text-stone-900">Set your password</h1>
-                <p class="text-stone-500 mt-1 text-sm">Welcome, <strong>{{ user.name ?? user.email }}</strong></p>
+                <h1 class="font-serif text-3xl text-stone-900">{{ 'confirm.heading'|trans }}</h1>
+                <p class="text-stone-500 mt-1 text-sm">{{ 'confirm.welcome'|trans({'%name%': user.name ?? user.email}) }}</p>
             </div>
 
             <div class="rounded-lg border border-stone-200 bg-white p-8 shadow-sm">
@@ -25,7 +25,7 @@
                     {{ form_widget(form) }}
                     <button type="submit"
                             class="mt-4 w-full inline-flex items-center justify-center rounded-md bg-stone-900 px-4 py-2 text-sm font-medium text-stone-50 shadow-sm hover:bg-stone-800 focus:outline-none focus:ring-2 focus:ring-amber-600 focus:ring-offset-2">
-                        Activate my account
+                        {{ 'confirm.submit'|trans }}
                     </button>
                 {{ form_end(form) }}
             </div>

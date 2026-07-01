@@ -35,15 +35,15 @@
 #}
 {% extends 'backoffice/base.html.twig' %}
 
-{% block admin_title %}{% block settings_title %}Profile &amp; Settings{% endblock %}{% endblock %}
+{% block admin_title %}{% block settings_title %}{{ 'app.account.profile.title'|trans }}{% endblock %}{% endblock %}
 
 {% block admin_body %}
     <header class="mb-6">
         <h1 class="font-serif text-3xl text-stone-900">
-            {%- block settings_h1 -%}Profile &amp; Settings{%- endblock -%}
+            {%- block settings_h1 -%}{{ 'app.account.profile.title'|trans }}{%- endblock -%}
         </h1>
         <p class="mt-1 text-sm text-stone-500">
-            {%- block settings_subtitle -%}Your identity and configuration.{%- endblock -%}
+            {%- block settings_subtitle -%}{{ 'app.account.profile.subtitle'|trans }}{%- endblock -%}
         </p>
     </header>
 

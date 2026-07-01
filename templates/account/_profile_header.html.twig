@@ -26,18 +26,18 @@
             <p class="mt-1 text-sm text-stone-500">{{ user.email }}</p>
 
             <dl class="mt-6 grid grid-cols-[7rem_1fr] gap-y-3 text-sm">
-                <dt class="text-stone-500">Roles</dt>
+                <dt class="text-stone-500">{{ 'app.account.profile.header.roles'|trans }}</dt>
                 <dd class="flex flex-wrap gap-1">
                     {% for role in user.roleEntities %}
                         <span class="inline-block rounded-md bg-stone-100 px-2 py-0.5 text-xs font-medium text-stone-700">
                             {{ role.name }}
                         </span>
                     {% else %}
-                        <span class="text-stone-400 italic">No roles assigned</span>
+                        <span class="text-stone-400 italic">{{ 'app.account.profile.header.no_roles'|trans }}</span>
                     {% endfor %}
                 </dd>
 
-                <dt class="text-stone-500">Account state</dt>
+                <dt class="text-stone-500">{{ 'app.account.profile.header.state'|trans }}</dt>
                 <dd>{% include '_state_pill.html.twig' with {state: user.state} only %}</dd>
             </dl>
         </div>

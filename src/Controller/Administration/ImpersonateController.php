@@ -17,6 +17,7 @@ use Symfony\Component\Security\Core\Authentication\Token\SwitchUserToken;
 use Symfony\Component\Security\Core\Exception\AccessDeniedException;
 use Symfony\Component\Security\Http\Firewall\SwitchUserListener;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
+use Symfony\Contracts\Translation\TranslatorInterface;
 
 /**
  * Admin "log in as" / impersonation.
@@ -47,6 +48,7 @@ final class ImpersonateController extends AbstractController
         private readonly UserRepository $users,
         private readonly TokenStorageInterface $tokenStorage,
         private readonly LoggerInterface $auditLogger,
+        private readonly TranslatorInterface $translator,
     ) {
     }
 
@@ -56,19 +58,23 @@ final class ImpersonateController extends AbstractController
     {
         $token = $request->request->get('_token');
         if (!$this->isCsrfTokenValid('impersonate' . $id, $token)) {
-            throw new AccessDeniedException('Invalid CSRF token.');
+            throw new AccessDeniedException(
+                $this->translator->trans('app.administration.user.invalid_csrf')
+            );
         }
 
         /** @var User|null $admin */
         $admin = $this->getUser();
         $target = $this->users->find($id);
         if ($target === null) {
-            throw $this->createNotFoundException('User not found.');
+            throw $this->createNotFoundException(
+                $this->translator->trans('app.administration.user.not_found')
+            );
         }
 
         // Guard: self-impersonation is meaningless and confusing.
         if ($admin?->getId() === $target->getId()) {
-            $this->addFlash('warning', 'You are already logged in as that user.');
+            $this->addFlash('warning', $this->translator->trans('app.administration.impersonation.already_as_user'));
             return $this->redirectToRoute('administration_user_list');
         }
 
@@ -83,10 +89,12 @@ final class ImpersonateController extends AbstractController
                 'target_email' => $target->getEmail(),
                 'target_state' => $target->getState(),
             ]);
-            $this->addFlash('error', sprintf(
-                'Cannot impersonate %s — they are not Active (current state: %s).',
-                $target->getEmail(),
-                $target->getState(),
+            $this->addFlash('error', $this->translator->trans(
+                'app.administration.impersonation.cannot_target_inactive',
+                [
+                    '%email%' => $target->getEmail(),
+                    '%state%' => $this->translator->trans('app.shared.state.' . $target->getState()),
+                ]
             ));
             return $this->redirectToRoute('administration_user_list');
         }
@@ -101,7 +109,7 @@ final class ImpersonateController extends AbstractController
                 'target_id'    => $target->getId(),
                 'target_email' => $target->getEmail(),
             ]);
-            $this->addFlash('error', 'Admins cannot impersonate other admins.');
+            $this->addFlash('error', $this->translator->trans('app.administration.impersonation.cannot_admin_to_admin'));
             return $this->redirectToRoute('administration_user_list');
         }
 
@@ -130,12 +138,16 @@ final class ImpersonateController extends AbstractController
         // the SwitchUserToken presence instead.
         $current = $this->tokenStorage->getToken();
         if (!$current instanceof SwitchUserToken) {
-            throw new AccessDeniedException('Not currently impersonating anyone.');
+            throw new AccessDeniedException(
+                $this->translator->trans('app.administration.impersonation.not_currently_impersonating')
+            );
         }
 
         $token = $request->request->get('_token');
         if (!$this->isCsrfTokenValid('exit_impersonation', $token)) {
-            throw new AccessDeniedException('Invalid CSRF token.');
+            throw new AccessDeniedException(
+                $this->translator->trans('app.administration.user.invalid_csrf')
+            );
         }
 
         // Capture who was being impersonated before we drop the SwitchUserToken.

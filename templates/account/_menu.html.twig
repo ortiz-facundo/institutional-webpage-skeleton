@@ -22,30 +22,30 @@
 {% set current_route = current_route|default(app.request.attributes.get('_route')) %}
 {% set groups = [
     {
-        label: 'Account',
+        label: 'app.account.menu.group.account'|trans,
         items: [
-            {label: 'Edit profile', route: 'account_profile_settings_edit_profile', enabled: false},
+            {label: 'app.account.menu.item.edit_profile'|trans, route: 'account_profile_settings_edit_profile', enabled: false},
         ],
     },
     {
-        label: 'Security',
+        label: 'app.account.menu.group.security'|trans,
         items: [
-            {label: 'Change password',         route: 'account_change_password',         enabled: true},
-            {label: 'Active sessions',         route: 'account_active_sessions',         enabled: false},
-            {label: 'Two-factor authentication', route: 'account_two_factor',           enabled: false},
+            {label: 'app.account.menu.item.change_password'|trans, route: 'account_change_password', enabled: true},
+            {label: 'app.account.menu.item.active_sessions'|trans, route: 'account_active_sessions', enabled: false},
+            {label: 'app.account.menu.item.two_factor'|trans,     route: 'account_two_factor',       enabled: false},
         ],
     },
     {
-        label: 'Preferences',
+        label: 'app.account.menu.group.preferences'|trans,
         items: [
-            {label: 'Locale & timezone', route: 'account_preferences_locale', enabled: false},
-            {label: 'Notifications',     route: 'account_preferences_notifications', enabled: false},
+            {label: 'app.account.menu.item.locale'|trans,         route: 'account_profile_settings_locale', enabled: true},
+            {label: 'app.account.menu.item.notifications'|trans,  route: 'account_preferences_notifications', enabled: false},
         ],
     },
     {
-        label: 'Danger zone',
+        label: 'app.account.menu.group.danger_zone'|trans,
         items: [
-            {label: 'Disable account', route: 'account_disable', enabled: false},
+            {label: 'app.account.menu.item.disable_account'|trans, route: 'account_disable', enabled: false},
         ],
     },
 ] %}

@@ -1,0 +1,12 @@
+# Shared module — Español (tuteo).
+# Véase `messages.en.yaml`.
+
+app:
+    shared:
+        state:
+            USER_STATE_ACTIVE: 'Activo'
+            USER_STATE_PENDING: 'Pendiente'
+            USER_STATE_DISABLED: 'Deshabilitado'
+        errors:
+            not_found: 'Entidad no encontrada.'
+            invalid_csrf: 'Token CSRF no válido.'

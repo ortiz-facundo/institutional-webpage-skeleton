@@ -1,29 +1,33 @@
 {% extends 'backoffice/base.html.twig' %}
 
-{% block admin_title %}{{ title }}{% endblock %}
+{% block admin_title %}{{ 'app.backoffice.nav.permissions'|trans }}{% endblock %}
 
 {% block admin_body %}
     {% include 'shared/crud/_breadcrumbs.html.twig' with {trail: trail} %}
     <div class="flex items-center justify-between mb-6">
         <h1 class="text-2xl font-serif text-stone-900">{{ title }}</h1>
-        <p class="text-sm text-stone-500">{{ items|length }} total</p>
+        <p class="text-sm text-stone-500">{{ 'app.administration.crud.total_items'|trans({'%count%': items|length}) }}</p>
     </div>
 
     {% if items|length == 0 %}
-        {% include 'shared/crud/_empty_state.html.twig' with {message: 'No permissions in the catalog yet.'} %}
+        {% include 'shared/crud/_empty_state.html.twig' with {message: 'app.administration.permission.empty'|trans} %}
     {% else %}
         <div class="overflow-hidden rounded-lg border border-stone-200 bg-white shadow-sm">
             <table class="min-w-full divide-y divide-stone-200">
                 <thead class="bg-stone-50">
                     <tr>
-                        <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-stone-500">Name</th>
-                        <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-stone-500">Roles using it</th>
+                        <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-stone-500">{{ 'app.administration.columns.permission.name'|trans }}</th>
+                        <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-stone-500">{{ ('permission.' ~ items|first.name ~ '.label')|trans }}</th>
+                        <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-stone-500">{{ 'app.administration.columns.permission.description'|trans }}</th>
+                        <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-stone-500">{{ 'app.administration.columns.permission.roles_using_it'|trans }}</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-stone-200 bg-white">
                     {% for p in items %}
                         <tr class="hover:bg-stone-50">
                             <td class="px-4 py-3 text-sm text-stone-900 font-mono">{{ p.name }}</td>
+                            <td class="px-4 py-3 text-sm text-stone-900">{{ ('permission.' ~ p.name ~ '.label')|trans }}</td>
+                            <td class="px-4 py-3 text-sm text-stone-500">{{ ('permission.' ~ p.name ~ '.description')|trans }}</td>
                             <td class="px-4 py-3 text-sm text-stone-500">
                                 {{ p.getRoles()|length }}
                             </td>

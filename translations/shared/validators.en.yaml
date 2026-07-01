@@ -1,0 +1,13 @@
+# Shared module — validator messages (English, source of truth).
+#
+# Used by Symfony's validator when no `message` is set on a constraint
+# and the framework falls back to this domain. The two form types
+# that pass custom messages set them inline (see
+# ChangePasswordFormType / AccountPasswordFormType / UserType /
+# RoleType) so this file only carries the cross-cutting policies.
+
+app:
+    shared:
+        validators:
+            required: 'This field is required.'
+            invalid_choice: 'Invalid choice.'

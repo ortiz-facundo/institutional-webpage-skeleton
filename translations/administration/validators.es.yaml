@@ -1,4 +1,4 @@
-# Administration module — mensajes del validador
+# Administration module — mensajes del validador (Español, tuteo).
 # Véase `validators.en.yaml` para el contexto. Mantén las claves alineadas
 # entre locales al añadir entradas nuevas.
 
@@ -6,3 +6,23 @@ app:
     user:
         email:
             duplicate: 'Este correo electrónico ya está en uso.'
+        role:
+            min: 'Asigna al menos un rol.'
+        state:
+            invalid: 'Estado no válido.'
+    role:
+        name:
+            invalid_format: 'Los nombres de rol deben estar en MAYÚSCULAS_CON_GUIONES_BAJOS y comenzar con ROLE_.'
+        permission:
+            min: 'Asigna al menos un permiso.'
+    account:
+        password:
+            current_required: 'Ingresa tu contraseña actual.'
+            new_required: 'Elige una nueva contraseña.'
+            min: 'La contraseña debe tener al menos %limit% caracteres.'
+            mismatch: 'Las contraseñas no coinciden.'
+    security:
+        password:
+            required: 'Elige una contraseña.'
+            min: 'La contraseña debe tener al menos %limit% caracteres.'
+            mismatch: 'Las contraseñas no coinciden.'

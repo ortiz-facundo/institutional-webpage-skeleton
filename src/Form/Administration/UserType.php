@@ -15,6 +15,7 @@ use Symfony\Component\Form\Extension\Core\Type\TextType;
 use Symfony\Component\Form\FormBuilderInterface;
 use Symfony\Component\OptionsResolver\OptionsResolver;
 use Symfony\Component\Validator\Constraints as Assert;
+use Symfony\Contracts\Translation\TranslatorInterface;
 
 /**
  * Backoffice User form.
@@ -35,23 +36,32 @@ use Symfony\Component\Validator\Constraints as Assert;
  *  - roleEntities is `mapped: false` and diffed in POST_SUBMIT to
  *    sidestep the Doctrine+EntityType data-mapper bug (see the form
  *    commit history for the long explanation).
+ *
+ *  All visible labels, helps, and constraint messages are translated
+ *  through the `messages` / `validators` domains. See
+ *  translations/administration/messages.<locale>.yaml and
+ *  translations/administration/validators.<locale>.yaml.
  */
 class UserType extends AbstractType
 {
-    public function __construct(private readonly RoleRepository $roles)
-    {
+    public function __construct(
+        private readonly RoleRepository $roles,
+        private readonly TranslatorInterface $translator,
+    ) {
     }
 
     public function buildForm(FormBuilderInterface $builder, array $options): void
     {
         $builder
             ->add('email', EmailType::class, [
+                'label' => $this->translator->trans('form.user.email'),
                 'constraints' => [
-                    new Assert\NotBlank(),
+                    new Assert\NotBlank(message: $this->translator->trans('app.shared.validators.required')),
                     new Assert\Email(),
                 ],
             ])
             ->add('name', TextType::class, [
+                'label' => $this->translator->trans('form.user.name'),
                 'required' => false,
                 'constraints' => [new Assert\Length(max: 120)],
             ])
@@ -60,9 +70,9 @@ class UserType extends AbstractType
         if ($options['show_state']) {
             $builder->add('state', ChoiceType::class, [
                 'choices' => [
-                    'Pending'  => User::USER_STATE_PENDING,
-                    'Active'   => User::USER_STATE_ACTIVE,
-                    'Disabled' => User::USER_STATE_DISABLED,
+                    $this->translator->trans('app.shared.state.USER_STATE_PENDING')  => User::USER_STATE_PENDING,
+                    $this->translator->trans('app.shared.state.USER_STATE_ACTIVE')   => User::USER_STATE_ACTIVE,
+                    $this->translator->trans('app.shared.state.USER_STATE_DISABLED') => User::USER_STATE_DISABLED,
                 ],
                 // `mapped: false` so the form's data mapper does NOT touch
                 // User::$state directly. State transitions must go through
@@ -71,16 +81,16 @@ class UserType extends AbstractType
                 // `$form->get('state')->getData()` to figure out the new
                 // state and dispatches via UserStateTransitionService.
                 'mapped'      => false,
-                'label'       => 'Account state',
+                'label'       => $this->translator->trans('form.user.state'),
                 'expanded'    => false,
                 'constraints' => [
-                    new Assert\NotBlank(),
+                    new Assert\NotBlank(message: $this->translator->trans('app.shared.validators.required')),
                     new Assert\Choice([
                         'choices' => User::USER_STATES,
-                        'message' => 'Invalid state.',
+                        'message' => $this->translator->trans('app.user.state.invalid'),
                     ]),
                 ],
-                'help'        => 'Pending: created, awaiting confirmation. Active: password set, can log in. Disabled: blocked by an admin.',
+                'help'        => $this->translator->trans('app.administration.user.state_help'),
             ]);
         }
 
@@ -91,8 +101,8 @@ class UserType extends AbstractType
             'multiple'     => true,
             'expanded'     => true,
             'mapped'       => false,
-            'constraints'  => [new Assert\Count(min: 1, minMessage: 'Assign at least one role.')],
-            'label'        => 'Roles',
+            'constraints'  => [new Assert\Count(min: 1, minMessage: $this->translator->trans('app.user.role.min'))],
+            'label'        => $this->translator->trans('form.user.roles'),
         ]);
 
         // Pre-populate the roleEntities field with the entity's current

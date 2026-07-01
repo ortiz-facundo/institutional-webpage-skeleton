@@ -4,8 +4,8 @@
 
 {% block settings_content %}
     <div class="mb-4 flex items-baseline justify-between">
-        <h2 class="font-serif text-xl text-stone-900">Settings</h2>
-        <p class="text-xs text-stone-400">Select a config item below.</p>
+        <h2 class="font-serif text-xl text-stone-900">{{ 'app.account.index.settings'|trans }}</h2>
+        <p class="text-xs text-stone-400">{{ 'app.account.index.select_hint'|trans }}</p>
     </div>
     {% include 'account/_menu.html.twig' %}
 {% endblock %}

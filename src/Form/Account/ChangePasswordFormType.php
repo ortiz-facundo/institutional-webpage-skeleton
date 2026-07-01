@@ -10,6 +10,7 @@ use Symfony\Component\Form\Extension\Core\Type\RepeatedType;
 use Symfony\Component\Form\FormBuilderInterface;
 use Symfony\Component\OptionsResolver\OptionsResolver;
 use Symfony\Component\Validator\Constraints as Assert;
+use Symfony\Contracts\Translation\TranslatorInterface;
 
 /**
  * Self-service "change password" form used by SecuritySettingsController.
@@ -24,38 +25,45 @@ use Symfony\Component\Validator\Constraints as Assert;
  * No data_class — the controller applies the new hash directly via
  * UserPasswordHasherInterface after the form is valid AND the current
  * password has been verified, mirroring AccountPasswordFormType's shape.
+ *
+ * All labels + constraint messages are translated through the
+ * `validators` domain (see translations/administration/validators.<locale>.yaml).
  */
 final class ChangePasswordFormType extends AbstractType
 {
+    public function __construct(private readonly TranslatorInterface $translator)
+    {
+    }
+
     public function buildForm(FormBuilderInterface $builder, array $options): void
     {
         $builder
             ->add('currentPassword', PasswordType::class, [
-                'label'       => 'Current password',
+                'label'       => $this->translator->trans('app.administration.form.account.password.current'),
                 'attr'        => ['autocomplete' => 'current-password'],
                 'mapped'      => false,
                 'constraints' => [
-                    new Assert\NotBlank(message: 'Enter your current password.'),
+                    new Assert\NotBlank(message: $this->translator->trans('app.account.password.current_required')),
                 ],
             ])
             ->add('newPassword', RepeatedType::class, [
                 'type'            => PasswordType::class,
                 'first_options'   => [
-                    'label' => 'New password',
+                    'label' => $this->translator->trans('app.administration.form.account.password.new'),
                     'attr'  => ['autocomplete' => 'new-password'],
                 ],
                 'second_options'  => [
-                    'label' => 'Repeat new password',
+                    'label' => $this->translator->trans('app.administration.form.account.password.repeat'),
                     'attr'  => ['autocomplete' => 'new-password'],
                 ],
-                'invalid_message' => 'Passwords do not match.',
+                'invalid_message' => $this->translator->trans('app.account.password.mismatch'),
                 'mapped'          => false,
                 'constraints'     => [
-                    new Assert\NotBlank(message: 'Pick a new password.'),
+                    new Assert\NotBlank(message: $this->translator->trans('app.account.password.new_required')),
                     new Assert\Length(
                         min: 5,
                         max: 4096,
-                        minMessage: 'Password must be at least {{ limit }} characters.',
+                        minMessage: $this->translator->trans('app.account.password.min', ['%limit%' => 5]),
                     ),
                 ],
             ])

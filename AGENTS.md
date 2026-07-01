@@ -481,9 +481,91 @@ also enforces the same minimum as defence in depth. The policy is enforced
 **only on set/reset** — existing hashes (including the test user's `test`)
 are grandfathered.
 
-i18n scope: **the email templates only** (`templates/security/emails/`).
-Translations live in `translations/security/messages.<locale>.yaml` (en + es).
-Admin/login forms stay English by design.
+i18n scope: **the entire UI** — every visible string in templates,
+controllers, forms, and the email templates. See §"Internationalization"
+below.
+
+### Internationalization
+
+The entire UI is translated: every visible string in a Twig template,
+every flash / FormError thrown by a controller, every form label / help
+/ placeholder / constraint message, the email subjects + bodies, and
+the entity-derived labels (the `USER_STATE_*` pills, the permission
+catalog). Spanish (`es`) is the **default** for unauthenticated
+traffic and for any signed-in user whose `locale` column is `NULL`.
+English (`en`) is the **source-of-truth locale** — missing keys in the
+Spanish catalog fall back to the English string.
+
+#### Resolution order
+
+1. The authenticated user's persisted `locale` preference
+   (`App\Entity\Administration\User::$locale`), if not null.
+2. The hard-coded default `'es'`.
+
+The resolver is `App\EventListener\LocaleResolver` — a
+`kernel.request` listener at priority 4 (after Symfony's
+`LocaleAwareListener` and the security firewall). It writes both the
+request locale (`$request->setLocale()`) AND the translator's cached
+locale (`$translator->setLocale()` via the `LocaleAwareInterface`) —
+the latter is necessary because the Translator caches `getLocale()`
+on first read; if any service called `trans()` before this listener
+ran, the cache would stick on `default_locale`.
+
+#### Translation catalogs
+
+Per-module subfolder convention (matches existing `translations/`
+layout). All new files use the `messages` domain; validator messages
+use `validators`. Keys are namespaced to avoid collisions.
+
+| File | Purpose |
+|---|---|
+| `translations/<module>/messages.<locale>.yaml` | UI strings, organized by module (`security/`, `backoffice/`, `account/`, `administration/`, `shared/`) |
+| `translations/<module>/validators.<locale>.yaml` | Constraint messages for forms in that module |
+
+`en` files are the **source of truth**. `es` files are the
+translations. Missing `es` keys fall back to `en` automatically
+(Symfony's `fallback_locale: en`).
+
+#### Adding a new string
+
+1. Add the key to `translations/<module>/messages.en.yaml` first.
+2. Mirror it in `translations/<module>/messages.es.yaml`.
+3. Reference it from Twig with `{{ 'app.<module>.<key>'|trans }}` or
+   from PHP with `$translator->trans('app.<module>.<key>')`.
+4. Run `docker compose exec php bin/console cache:clear`.
+
+#### Adding a new permission
+
+1. Append the constant + entry in `App\Security\Permission::all()`.
+2. Add a `permission.<NAME>.label` and `permission.<NAME>.description`
+   key to `translations/security/messages.<locale>.yaml` (both locales).
+3. The role/permission admin form (`RoleType::permissions` and the
+   permission catalog page) reads from those keys via the
+   `permission.<NAME>.label` lookup.
+
+#### Locale switcher
+
+`/account/profile-settings/locale` (controller
+`App\Controller\Account\LocaleController`, form
+`App\Form\Account\LocaleType`, template
+`templates/account/locale.html.twig`). The switcher mutates the signed-in
+User's `locale` column and redirects back; no cookie is written, so
+anonymous traffic always falls back to Spanish.
+
+#### Spanish tone
+
+Tuteo (tú / tienes / puedes). No voseo. Examples:
+"Define tu contraseña" / "Puedes iniciar sesión" / "Elige una nueva
+contraseña".
+
+#### Validation commands
+
+```bash
+docker compose exec php bin/console lint:translations --locale=en
+docker compose exec php bin/console lint:translations --locale=es
+docker compose exec php bin/console lint:yaml translations/
+docker compose exec php bin/console lint:twig templates/
+```
 
 ### Dev mail capture (Mailpit)
 

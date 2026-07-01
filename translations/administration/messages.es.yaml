@@ -1,0 +1,127 @@
+# Administration module — Español (tuteo).
+# Véase `messages.en.yaml`.
+
+app:
+    administration:
+        crud:
+            back: 'Volver'
+            save: 'Guardar'
+            create: 'Crear'
+            new: 'Nuevo'
+            delete: 'Eliminar'
+            total_items: '{0} Sin elementos|{1} Un elemento|[2,Inf] %count% elementos'
+            empty: 'Aún no hay %entity_plural%. Crea el primero para empezar.'
+            none: 'ninguno'
+            actions_label: 'Acciones'
+            confirm:
+                generic: '¿Estás seguro?'
+                delete: '¿Eliminar este %entity%? Esta acción no se puede deshacer.'
+                impersonate: '¿Iniciar sesión como este %entity%? Actuarás en su nombre hasta que salgas de la suplantación.'
+                resend: '¿Reenviar el correo de confirmación de cuenta a este %entity%?'
+            actions:
+                view: 'Ver %entity%'
+                edit: 'Editar %entity%'
+                delete: 'Eliminar %entity%'
+                impersonate: 'Iniciar sesión como %entity%'
+                resend: 'Reenviar correo de confirmación'
+            breadcrumbs:
+                dashboard: 'Panel'
+                new: 'Nuevo'
+            # Valores por defecto que usa AbstractCrudController cuando
+            # el controlador concreto no los sobreescribe. `%entity_plural%`
+            # es la etiqueta plural de la entidad (p. ej. "Users" /
+            # "Usuarios"); el controlador la pasa desde
+            # `entity.<name>.label_plural`.
+            titles:
+                list: '%entity_plural%'
+                new: 'Nuevo %entity%'
+                edit: 'Editar %display%'
+                view: '%display%'
+            new_button: 'Nuevo %entity%'
+        columns:
+            user:
+                email: 'Correo electrónico'
+                name: 'Nombre'
+                state: 'Estado'
+            role:
+                name: 'Nombre'
+                perm_count: 'N.º de permisos'
+            permission:
+                name: 'Nombre'
+                roles_using_it: 'Roles que lo usan'
+                description: 'Descripción'
+        flash:
+            created: '%entity% creado.'
+            updated: '%entity% actualizado.'
+            deleted: '%entity% eliminado.'
+            user_created: 'Usuario creado. Correo de confirmación enviado a %email%.'
+            confirmation_resent: 'Correo de confirmación reenviado a %email%.'
+        view:
+            edit_button: 'Editar'
+            back_to_users: 'Volver a usuarios'
+            back_to_roles: 'Volver a roles'
+            label:
+                email: 'Correo electrónico'
+                name: 'Nombre'
+                state: 'Estado'
+                roles: 'Roles'
+                effective_permissions: 'Permisos efectivos'
+                permissions: 'Permisos'
+                users_with_this_role: 'Usuarios con este rol'
+        impersonation:
+            already_as_user: 'Ya has iniciado sesión como ese usuario.'
+            cannot_target_inactive: 'No puedes suplantar a %email%: no está Activo (estado actual: %state%).'
+            cannot_admin_to_admin: 'Los administradores no pueden suplantar a otros administradores.'
+            not_currently_impersonating: 'No estás suplantando a nadie en este momento.'
+        user:
+            list_title: 'Usuarios'
+            new:
+                help: 'La nueva cuenta empezará en estado USER_STATE_PENDING. Se enviará un correo de confirmación para que el usuario defina su contraseña y active la cuenta.'
+            state_help: 'Pendiente: creada, esperando confirmación. Activo: contraseña definida, puede iniciar sesión. Deshabilitado: bloqueada por un administrador.'
+            not_found: 'Usuario no encontrado.'
+            invalid_csrf: 'Token CSRF no válido.'
+        role:
+            list_title: 'Roles'
+            not_found: 'Rol no encontrado.'
+            invalid_csrf: 'Token CSRF no válido.'
+        permission:
+            list_title: 'Permisos'
+            empty: 'Aún no hay permisos en el catálogo.'
+            not_found: 'Permiso no encontrado.'
+        # Etiquetas de formulario (usadas por UserType / RoleType /
+        # ChangePasswordFormType / AccountPasswordFormType).
+        form:
+            user:
+                email: 'Correo electrónico'
+                name: 'Nombre'
+                state: 'Estado de la cuenta'
+                roles: 'Roles'
+            role:
+                name: 'Nombre del rol (ej. ROLE_EDITOR)'
+                permissions: 'Permisos'
+            account:
+                password:
+                    current: 'Contraseña actual'
+                    new: 'Nueva contraseña'
+                    repeat: 'Repite la nueva contraseña'
+            security:
+                password:
+                    new: 'Contraseña'
+                    repeat: 'Repite la contraseña'
+        # Ramas de la página confirm_invalid (consumidas vía translation_domain).
+        confirm_invalid:
+            user_no_longer_pending: 'Tu cuenta ya no está esperando activación. Es posible que un administrador la haya deshabilitado.'
+        # Etiquetas de entidad (singular + plural). `getEntityLabel()`
+        # devuelve el singular; la lista / estado vacío / migas de pan
+        # usan el plural mediante la interpolación `crud.titles.list` /
+        # `crud.empty`.
+        entity:
+            user:
+                label: 'Usuario'
+                label_plural: 'Usuarios'
+            role:
+                label: 'Rol'
+                label_plural: 'Roles'
+            permission:
+                label: 'Permiso'
+                label_plural: 'Permisos'

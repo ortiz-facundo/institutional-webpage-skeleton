@@ -13,6 +13,7 @@ use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
+use Symfony\Contracts\Translation\TranslatorInterface;
 
 #[Route('/admin/roles', name: 'administration_role_')]
 #[IsGranted(Perm::PERMISSION_MANAGE_ROLES)]
@@ -20,9 +21,10 @@ final class RoleController extends AbstractCrudController
 {
     public function __construct(
         EntityManagerInterface $em,
+        TranslatorInterface $translator,
         private readonly RoleRepository $roles,
     ) {
-        parent::__construct($em);
+        parent::__construct($em, $translator);
     }
 
     protected function getEntityClass(): string
@@ -49,8 +51,8 @@ final class RoleController extends AbstractCrudController
     protected function getListColumns(): array
     {
         return [
-            ['label' => 'Name',     'path' => 'name',        'class' => 'font-mono text-xs'],
-            ['label' => '# perms',  'path' => 'permissions', 'class' => 'text-stone-500'],
+            ['label' => $this->translator->trans('app.administration.columns.role.name'),       'path' => 'name',        'class' => 'font-mono text-xs'],
+            ['label' => $this->translator->trans('app.administration.columns.role.perm_count'), 'path' => 'permissions', 'class' => 'text-stone-500'],
         ];
     }
 
@@ -61,7 +63,12 @@ final class RoleController extends AbstractCrudController
 
     protected function getEntityLabel(): string
     {
-        return 'Role';
+        return $this->translator->trans('app.administration.entity.role.label');
+    }
+
+    protected function getEntityLabelPlural(): string
+    {
+        return $this->translator->trans('app.administration.entity.role.label_plural');
     }
 
     protected function getEntityDisplayName(object $entity): string

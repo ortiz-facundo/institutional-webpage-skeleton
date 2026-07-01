@@ -39,7 +39,7 @@
         label: null,
         items: [
             {
-                label: 'Dashboard',
+                label: 'app.backoffice.nav.dashboard'|trans,
                 route: 'backoffice_dashboard',
                 route_prefix: 'backoffice_dashboard',
                 permission: 'PERMISSION_VIEW_BACKOFFICE',
@@ -48,24 +48,24 @@
         ],
     },
     {
-        label: 'Administration',
+        label: 'app.backoffice.nav.administration'|trans,
         items: [
             {
-                label: 'Users',
+                label: 'app.backoffice.nav.users'|trans,
                 route: 'administration_user_list',
                 route_prefix: 'admin_user',
                 permission: 'PERMISSION_MANAGE_USERS',
                 icon: 'users',
             },
             {
-                label: 'Roles',
+                label: 'app.backoffice.nav.roles'|trans,
                 route: 'administration_role_list',
                 route_prefix: 'admin_role',
                 permission: 'PERMISSION_MANAGE_ROLES',
                 icon: 'shield',
             },
             {
-                label: 'Permissions',
+                label: 'app.backoffice.nav.permissions'|trans,
                 route: 'administration_permission_list',
                 route_prefix: 'admin_permission',
                 permission: 'PERMISSION_MANAGE_PERMISSIONS',
@@ -109,8 +109,8 @@
                 </span>
             </a>
             <a href="{{ path('account_profile_settings') }}"
-               aria-label="Settings"
-               title="Settings"
+               aria-label="{{ 'app.backoffice.settings'|trans }}"
+               title="{{ 'app.backoffice.settings'|trans }}"
                class="flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-stone-500 hover:bg-stone-100 hover:text-stone-900 focus:outline-none focus:ring-2 focus:ring-amber-600 focus:ring-offset-2">
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
                      stroke-width="1.5" stroke="currentColor" aria-hidden="true"
@@ -128,7 +128,7 @@
             <input type="hidden" name="_csrf_token" value="{{ csrf_token('logout') }}">
             <button type="submit"
                     class="flex w-full items-center gap-2 rounded-md px-2 py-2 pl-[3.25rem] text-left text-xs font-medium text-stone-500 hover:bg-stone-100 hover:text-stone-900">
-                <span>Sign out</span>
+                <span>{{ 'app.backoffice.sign_out'|trans }}</span>
             </button>
         </form>
     </div>

@@ -63,6 +63,15 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\Column(name: 'state', type: 'string', length: 32, options: ['default' => self::USER_STATE_PENDING])]
     private string $state = self::USER_STATE_PENDING;
 
+    /**
+     * User's preferred UI language. `null` = "use the system default"
+     * (Spanish for unauthenticated requests; resolved by LocaleResolver).
+     * The column is nullable so that "unset" is a valid state distinct
+     * from any concrete value.
+     */
+    #[ORM\Column(name: 'locale', type: 'string', length: 5, nullable: true)]
+    private ?string $locale = null;
+
     /** @var Collection<int, Role> */
     #[ORM\ManyToMany(targetEntity: Role::class, inversedBy: 'users')]
     #[ORM\JoinTable(name: 'user_role')]
@@ -148,6 +157,33 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     public function isDisabled(): bool
     {
         return $this->state === self::USER_STATE_DISABLED;
+    }
+
+    /** @var list<string> Locales the system knows about. Keep aligned with
+     *  the `choices` on Account\Form\LocaleType and with the keys in
+     *  `translations/<module>/messages.<locale>.yaml`. */
+    public const array SUPPORTED_LOCALES = ['en', 'es'];
+
+    public function getLocale(): ?string
+    {
+        return $this->locale;
+    }
+
+    /**
+     * @throws \InvalidArgumentException when $locale is not null and not in
+     *                                   self::SUPPORTED_LOCALES
+     */
+    public function setLocale(?string $locale): self
+    {
+        if ($locale !== null && !in_array($locale, self::SUPPORTED_LOCALES, true)) {
+            throw new \InvalidArgumentException(sprintf(
+                'Unsupported locale "%s". Allowed: %s, or null.',
+                $locale,
+                implode(', ', self::SUPPORTED_LOCALES)
+            ));
+        }
+        $this->locale = $locale;
+        return $this;
     }
 
     /**

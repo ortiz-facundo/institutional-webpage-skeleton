@@ -1,0 +1,8 @@
+# Shared module — mensajes del validador (Español, tuteo).
+# Véase `validators.en.yaml`.
+
+app:
+    shared:
+        validators:
+            required: 'Este campo es obligatorio.'
+            invalid_choice: 'Opción no válida.'

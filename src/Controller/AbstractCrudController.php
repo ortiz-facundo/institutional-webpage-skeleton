@@ -11,6 +11,7 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Core\Exception\AccessDeniedException;
+use Symfony\Contracts\Translation\TranslatorInterface;
 use App\Security\Permission as Perm;
 
 /**
@@ -25,11 +26,19 @@ use App\Security\Permission as Perm;
  *     reused by entities that need a different gate.
  *   - additional method-level checks (e.g. delete requires a stronger
  *     permission) can be added in subclasses by overriding.
+ *
+ * All user-facing strings produced by this base are translated via
+ * TranslatorInterface. Entity labels are still produced by the concrete
+ * controller (so the "User" / "Role" constants stay machine-only) and
+ * are interpolated into the `app.administration.crud.*` templates
+ * (titles, flash, empty, breadcrumbs, …).
  */
 abstract class AbstractCrudController extends AbstractController
 {
-    public function __construct(protected readonly EntityManagerInterface $em)
-    {
+    public function __construct(
+        protected readonly EntityManagerInterface $em,
+        protected readonly TranslatorInterface $translator,
+    ) {
     }
 
     abstract protected function getEntityClass(): string;
@@ -48,6 +57,14 @@ abstract class AbstractCrudController extends AbstractController
     abstract protected function getRequiredPermission(): string;
 
     abstract protected function getEntityLabel(): string;
+
+    /**
+     * Pluralised entity label. Used for list-page titles, empty-state
+     * copy, breadcrumbs, etc. — anything where the entity is referred
+     * to as a collection. Concrete controllers return the translated
+     * plural (e.g. "Users" / "Usuarios").
+     */
+    abstract protected function getEntityLabelPlural(): string;
 
     /**
      * Human-readable label for an entity, used in the edit/view page
@@ -100,15 +117,17 @@ abstract class AbstractCrudController extends AbstractController
 
     /**
      * Success-flash message shown after a successful create. Default:
-     * "{Entity label} created." Subclasses can override to add context
-     * (e.g. the recipient of a confirmation email). Return null to
-     * suppress the generic flash entirely — useful when `onCreateSuccess`
-     * already added its own success flash and you don't want both to
-     * show up.
+     * "%entity% created." (trans key app.administration.flash.created).
+     * Subclasses can override to add context (e.g. the recipient of a
+     * confirmation email). Return null to suppress the generic flash
+     * entirely — useful when `onCreateSuccess` already added its own
+     * success flash and you don't want both to show up.
      */
     protected function getCreatedFlashMessage(object $entity): ?string
     {
-        return $this->getEntityLabel() . ' created.';
+        return $this->translator->trans('app.administration.flash.created', [
+            '%entity%' => $this->getEntityLabel(),
+        ]);
     }
 
     /**
@@ -154,6 +173,30 @@ abstract class AbstractCrudController extends AbstractController
     protected function shouldHideResend(object $entity): bool
     {
         return false;
+    }
+
+    /**
+     * Centralised breadcrumb builder. The trail reads:
+     *   - on the LIST page:   Dashboard > <Entity plural>
+     *   - on NEW/EDIT/VIEW:   Dashboard > <Entity plural> (link) > <current page>
+     *
+     * The list page passes `null` for the entity-list link (we're already
+     * there); the other actions pass the list route so the breadcrumb
+     * backtracks to it.
+     *
+     * @param list<array{label: string, path: ?string}> $extra
+     * @return list<array{label: string, path: ?string}>
+     */
+    protected function buildTrail(?string $listLink, array $extra = []): array
+    {
+        $listLabel = $this->translator->trans('app.administration.crud.titles.list', [
+            '%entity_plural%' => $this->getEntityLabelPlural(),
+        ]);
+        $trail = [
+            ['label' => $this->translator->trans('app.administration.crud.breadcrumbs.dashboard'), 'path' => 'backoffice_dashboard'],
+            ['label' => $listLabel, 'path' => $listLink],
+        ];
+        return [...$trail, ...$extra];
     }
 
     #[Route('', name: 'list', methods: ['GET'])]
@@ -215,13 +258,23 @@ abstract class AbstractCrudController extends AbstractController
             }
         }
 
+        $listTitle = $this->translator->trans('app.administration.crud.titles.list', [
+            '%entity_plural%' => $this->getEntityLabelPlural(),
+        ]);
+        $newLabel = $this->translator->trans('app.administration.crud.new_button', [
+            '%entity%' => $this->getEntityLabel(),
+        ]);
+        $emptyMessage = $this->translator->trans('app.administration.crud.empty', [
+            '%entity_plural%' => strtolower($this->getEntityLabelPlural()),
+        ]);
+
         return $this->render($this->getTemplatePrefix() . '/list.html.twig', [
             'items'              => $items,
             'columns'            => $this->getListColumns(),
-            'title'              => $this->getEntityLabel() . 's',
+            'title'              => $listTitle,
             'entity_label'       => $this->getEntityLabel(),
             'new_path'           => $this->getRoutePrefix() . '_new',
-            'new_label'          => 'New ' . $this->getEntityLabel(),
+            'new_label'          => $newLabel,
             'view_path'          => $this->getRoutePrefix() . '_view',
             'edit_path'          => $this->getRoutePrefix() . '_edit',
             'delete_path'        => $this->getRoutePrefix() . '_delete',
@@ -232,11 +285,10 @@ abstract class AbstractCrudController extends AbstractController
             'resend_path'        => $resendPath,
             'resend_tokens'      => $resendTokens,
             'hide_resend'        => array_keys($resendHidden),
-            'empty_message'      => 'No ' . strtolower($this->getEntityLabel()) . 's yet. Create the first one to get started.',
-            'trail'              => [
-                ['label' => 'Dashboard', 'path' => 'backoffice_dashboard'],
-                ['label' => $this->getEntityLabel() . 's', 'path' => null],
-            ],
+            'empty_message'      => $emptyMessage,
+            'trail'              => $this->buildTrail(null, [
+                ['label' => $listTitle, 'path' => null],
+            ]),
         ]);
     }
 
@@ -266,17 +318,19 @@ abstract class AbstractCrudController extends AbstractController
             return $this->redirectToRoute($this->getRoutePrefix() . '_list');
         }
 
+        $title = $this->translator->trans('app.administration.crud.titles.new', [
+            '%entity%' => $this->getEntityLabel(),
+        ]);
+
         return $this->render($this->getTemplatePrefix() . '/new.html.twig', [
             'form'         => $form,
             'entity'       => $entity,
-            'title'        => 'New ' . $this->getEntityLabel(),
+            'title'        => $title,
             'back_path'    => $this->getRoutePrefix() . '_list',
-            'submit_label' => 'Create',
-            'trail'        => [
-                ['label' => 'Dashboard', 'path' => 'backoffice_dashboard'],
-                ['label' => $this->getEntityLabel() . 's', 'path' => $this->getRoutePrefix() . '_list'],
-                ['label' => 'New', 'path' => null],
-            ],
+            'submit_label' => $this->translator->trans('app.administration.crud.create'),
+            'trail'        => $this->buildTrail($this->getRoutePrefix() . '_list', [
+                ['label' => $this->translator->trans('app.administration.crud.breadcrumbs.new'), 'path' => null],
+            ]),
         ]);
     }
 
@@ -287,7 +341,9 @@ abstract class AbstractCrudController extends AbstractController
 
         $entity = $this->findEntity($id);
         if ($entity === null) {
-            throw $this->createNotFoundException('Entity not found.');
+            throw $this->createNotFoundException(
+                $this->translator->trans('app.shared.errors.not_found')
+            );
         }
 
         $form = $this->createForm($this->getFormType(), $entity, $this->getFormOptions(false));
@@ -296,22 +352,26 @@ abstract class AbstractCrudController extends AbstractController
         if ($form->isSubmitted() && $form->isValid()) {
             $this->onFormSubmit($entity, $form, false);
             $this->em->flush();
-            $this->addFlash('success', $this->getEntityLabel() . ' updated.');
+            $this->addFlash('success', $this->translator->trans('app.administration.flash.updated', [
+                '%entity%' => $this->getEntityLabel(),
+            ]));
 
             return $this->redirectToRoute($this->getRoutePrefix() . '_list');
         }
 
+        $title = $this->translator->trans('app.administration.crud.titles.edit', [
+            '%display%' => $this->getEntityDisplayName($entity),
+        ]);
+
         return $this->render($this->getTemplatePrefix() . '/edit.html.twig', [
             'form'         => $form,
             'entity'       => $entity,
-            'title'        => 'Edit ' . $this->getEntityDisplayName($entity),
+            'title'        => $title,
             'back_path'    => $this->getRoutePrefix() . '_list',
-            'submit_label' => 'Save',
-            'trail'        => [
-                ['label' => 'Dashboard', 'path' => 'backoffice_dashboard'],
-                ['label' => $this->getEntityLabel() . 's', 'path' => $this->getRoutePrefix() . '_list'],
-                ['label' => 'Edit ' . $this->getEntityDisplayName($entity), 'path' => null],
-            ],
+            'submit_label' => $this->translator->trans('app.administration.crud.save'),
+            'trail'        => $this->buildTrail($this->getRoutePrefix() . '_list', [
+                ['label' => $title, 'path' => null],
+            ]),
         ]);
     }
 
@@ -322,20 +382,24 @@ abstract class AbstractCrudController extends AbstractController
 
         $entity = $this->findEntity($id);
         if ($entity === null) {
-            throw $this->createNotFoundException('Entity not found.');
+            throw $this->createNotFoundException(
+                $this->translator->trans('app.shared.errors.not_found')
+            );
         }
+
+        $title = $this->translator->trans('app.administration.crud.titles.view', [
+            '%display%' => $this->getEntityDisplayName($entity),
+        ]);
 
         return $this->render($this->getTemplatePrefix() . '/view.html.twig', [
             'entity'       => $entity,
-            'title'        => $this->getEntityDisplayName($entity),
+            'title'        => $title,
             'entity_label' => $this->getEntityLabel(),
             'back_path'    => $this->getRoutePrefix() . '_list',
             'edit_path'    => $this->getRoutePrefix() . '_edit',
-            'trail'        => [
-                ['label' => 'Dashboard', 'path' => 'backoffice_dashboard'],
-                ['label' => $this->getEntityLabel() . 's', 'path' => $this->getRoutePrefix() . '_list'],
-                ['label' => $this->getEntityDisplayName($entity), 'path' => null],
-            ],
+            'trail'        => $this->buildTrail($this->getRoutePrefix() . '_list', [
+                ['label' => $title, 'path' => null],
+            ]),
         ]);
     }
 
@@ -346,17 +410,23 @@ abstract class AbstractCrudController extends AbstractController
 
         $token = $request->request->get('_token');
         if (!$this->isCsrfTokenValid('delete' . $id, $token)) {
-            throw new AccessDeniedException('Invalid CSRF token.');
+            throw new AccessDeniedException(
+                $this->translator->trans('app.shared.errors.invalid_csrf')
+            );
         }
 
         $entity = $this->findEntity($id);
         if ($entity === null) {
-            throw $this->createNotFoundException('Entity not found.');
+            throw $this->createNotFoundException(
+                $this->translator->trans('app.shared.errors.not_found')
+            );
         }
 
         $this->em->remove($entity);
         $this->em->flush();
-        $this->addFlash('success', $this->getEntityLabel() . ' deleted.');
+        $this->addFlash('success', $this->translator->trans('app.administration.flash.deleted', [
+            '%entity%' => $this->getEntityLabel(),
+        ]));
 
         return $this->redirectToRoute($this->getRoutePrefix() . '_list');
     }

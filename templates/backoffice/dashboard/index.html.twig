@@ -1,34 +1,34 @@
 {% extends 'backoffice/base.html.twig' %}
 
-{% block admin_title %}Dashboard{% endblock %}
+{% block admin_title %}{{ 'app.backoffice.nav.dashboard'|trans }}{% endblock %}
 
 {% block admin_body %}
-    {% include 'shared/crud/_breadcrumbs.html.twig' with {trail: [{label: 'Dashboard', path: null}]} %}
+    {% include 'shared/crud/_breadcrumbs.html.twig' with {trail: [{label: 'app.backoffice.nav.dashboard'|trans, path: null}]} %}
 
     <div class="mb-8">
-        <h1 class="font-serif text-3xl text-stone-900">Welcome, {{ app.user.name ?: app.user.email }}</h1>
-        <p class="text-stone-500 mt-1 text-sm">Signed in as <span class="font-mono">{{ app.user.email }}</span></p>
+        <h1 class="font-serif text-3xl text-stone-900">{{ 'app.backoffice.dashboard.welcome'|trans({'%name%': app.user.name ?: app.user.email}) }}</h1>
+        <p class="text-stone-500 mt-1 text-sm">{{ 'app.backoffice.dashboard.signed_in_as'|trans({'%email%': app.user.email}) }}</p>
     </div>
 
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {% if is_granted(constant('App\\Security\\Permission::PERMISSION_MANAGE_USERS')) %}
             <a href="{{ path('administration_user_list') }}" class="block rounded-lg border border-stone-200 bg-white p-6 shadow-sm hover:border-amber-600 hover:shadow">
-                <h2 class="font-serif text-lg text-stone-900">Users</h2>
-                <p class="text-sm text-stone-500 mt-1">Assign roles to backoffice users.</p>
+                <h2 class="font-serif text-lg text-stone-900">{{ 'app.backoffice.nav.users'|trans }}</h2>
+                <p class="text-sm text-stone-500 mt-1">{{ 'app.backoffice.dashboard.tile.users'|trans }}</p>
             </a>
         {% endif %}
 
         {% if is_granted(constant('App\\Security\\Permission::PERMISSION_MANAGE_ROLES')) %}
             <a href="{{ path('administration_role_list') }}" class="block rounded-lg border border-stone-200 bg-white p-6 shadow-sm hover:border-amber-600 hover:shadow">
-                <h2 class="font-serif text-lg text-stone-900">Roles</h2>
-                <p class="text-sm text-stone-500 mt-1">Define which permissions each role grants.</p>
+                <h2 class="font-serif text-lg text-stone-900">{{ 'app.backoffice.nav.roles'|trans }}</h2>
+                <p class="text-sm text-stone-500 mt-1">{{ 'app.backoffice.dashboard.tile.roles'|trans }}</p>
             </a>
         {% endif %}
 
         {% if is_granted(constant('App\\Security\\Permission::PERMISSION_MANAGE_PERMISSIONS')) %}
             <a href="{{ path('administration_permission_list') }}" class="block rounded-lg border border-stone-200 bg-white p-6 shadow-sm hover:border-amber-600 hover:shadow">
-                <h2 class="font-serif text-lg text-stone-900">Permissions</h2>
-                <p class="text-sm text-stone-500 mt-1">Browse the permission catalog.</p>
+                <h2 class="font-serif text-lg text-stone-900">{{ 'app.backoffice.nav.permissions'|trans }}</h2>
+                <p class="text-sm text-stone-500 mt-1">{{ 'app.backoffice.dashboard.tile.permissions'|trans }}</p>
             </a>
         {% endif %}
     </div>

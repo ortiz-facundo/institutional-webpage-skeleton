@@ -1,0 +1,154 @@
+# Administration module — English (source of truth).
+#
+# Six areas:
+#   1. `app.administration.crud.*` — chrome shared by every entity list /
+#      form / empty state / row action: back link, save, create, new,
+#      delete, confirm-dialog messages, action aria-labels, list total
+#      plural, empty message, "none" placeholder.
+#   2. `app.administration.flash.*` — success flashes from the
+#      AbstractCrudController base and the per-entity overrides.
+#   3. `app.administration.view.*` — view-page back-links and the
+#      field labels on the read-only detail pages.
+#   4. `app.administration.impersonation.*` — error flashes from
+#      ImpersonateController.
+#   5. `app.administration.user.*` / `role.*` / `permission.*` —
+#      entity-specific page titles, column headers, list counts,
+#      form hints.
+#   6. `app.administration.confirm_invalid` — the `user_no_longer_pending`
+#      reason branched in confirm_invalid.html.twig (kept here so the
+#      Security module's templates can use the `app.administration.*`
+#      domain by setting `translation_domain: administration`).
+
+app:
+    administration:
+        # Shared CRUD chrome (used by templates/shared/crud/* and the
+        # list/form partials).
+        crud:
+            back: 'Back'
+            save: 'Save'
+            create: 'Create'
+            new: 'New'
+            delete: 'Delete'
+            total_items: '{0} No items|{1} One item|[2,Inf] %count% items'
+            none: 'none'
+            actions_label: 'Actions'
+            confirm:
+                generic: 'Are you sure?'
+                delete: 'Delete this %entity%? This cannot be undone.'
+                impersonate: 'Log in as this %entity%? You will act on their behalf until you exit impersonation.'
+                resend: 'Re-send the account confirmation email to this %entity%?'
+            actions:
+                view: 'View %entity%'
+                edit: 'Edit %entity%'
+                delete: 'Delete %entity%'
+                impersonate: 'Log in as %entity%'
+                resend: 'Resend confirmation email'
+            breadcrumbs:
+                dashboard: 'Dashboard'
+                new: 'New'
+            # Defaults used by AbstractCrudController when the concrete
+            # controller doesn't override. `%entity_plural%` is the
+            # translated entity label in plural form (e.g. "Users" /
+            # "Usuarios"); the controller passes it from `entity.<name>.label_plural`.
+            titles:
+                list: '%entity_plural%'
+                new: 'New %entity%'
+                edit: 'Edit %display%'
+                view: '%display%'
+            new_button: 'New %entity%'
+            empty: 'No %entity_plural% yet. Create the first one to get started.'
+        # Entity-specific list column labels (kept here so each entity
+        # can override without touching the partial).
+        columns:
+            user:
+                email: 'Email'
+                name: 'Name'
+                state: 'State'
+            role:
+                name: 'Name'
+                perm_count: '# perms'
+            permission:
+                name: 'Name'
+                roles_using_it: 'Roles using it'
+                description: 'Description'
+        # Success flashes (mirrors the keys that AbstractCrudController +
+        # the per-entity controllers look up).
+        flash:
+            created: '%entity% created.'
+            updated: '%entity% updated.'
+            deleted: '%entity% deleted.'
+            user_created: 'User created. Confirmation email sent to %email%.'
+            confirmation_resent: 'Confirmation email re-sent to %email%.'
+        # Read-only view pages (User, Role).
+        view:
+            edit_button: 'Edit'
+            back_to_users: 'Back to users'
+            back_to_roles: 'Back to roles'
+            label:
+                email: 'Email'
+                name: 'Name'
+                state: 'State'
+                roles: 'Roles'
+                effective_permissions: 'Effective permissions'
+                permissions: 'Permissions'
+                users_with_this_role: 'Users with this role'
+        # Impersonation flashes (ImpersonateController).
+        impersonation:
+            already_as_user: 'You are already logged in as that user.'
+            cannot_target_inactive: 'Cannot impersonate %email% — they are not Active (current state: %state%).'
+            cannot_admin_to_admin: 'Admins cannot impersonate other admins.'
+            not_currently_impersonating: 'Not currently impersonating anyone.'
+        # User entity — new/edit form (UserType).
+        user:
+            list_title: 'Users'
+            new:
+                help: 'The new account will start in USER_STATE_PENDING state. A confirmation email will be sent so the user can set their password and activate the account.'
+            state_help: 'Pending: created, awaiting confirmation. Active: password set, can log in. Disabled: blocked by an admin.'
+            not_found: 'User not found.'
+            invalid_csrf: 'Invalid CSRF token.'
+        # Role entity.
+        role:
+            list_title: 'Roles'
+            not_found: 'Role not found.'
+            invalid_csrf: 'Invalid CSRF token.'
+        # Permission entity (the catalog is read-only).
+        permission:
+            list_title: 'Permissions'
+            empty: 'No permissions in the catalog yet.'
+            not_found: 'Permission not found.'
+        # Form labels (consumed by UserType / RoleType / ChangePasswordFormType
+        # / AccountPasswordFormType).
+        form:
+            user:
+                email: 'Email'
+                name: 'Name'
+                state: 'Account state'
+                roles: 'Roles'
+            role:
+                name: 'Role name (e.g. ROLE_EDITOR)'
+                permissions: 'Permissions'
+            account:
+                password:
+                    current: 'Current password'
+                    new: 'New password'
+                    repeat: 'Repeat new password'
+            security:
+                password:
+                    new: 'Password'
+                    repeat: 'Repeat password'
+        # Confirm_invalid page branches (consumed via translation_domain).
+        confirm_invalid:
+            user_no_longer_pending: 'Your account is no longer awaiting activation. An administrator may have disabled it.'
+        # Entity labels — single + plural. `getEntityLabel()` returns the
+        # singular; the list page / empty state / breadcrumbs use the
+        # plural via `crud.titles.list` / `crud.empty` interpolation.
+        entity:
+            user:
+                label: 'User'
+                label_plural: 'Users'
+            role:
+                label: 'Role'
+                label_plural: 'Roles'
+            permission:
+                label: 'Permission'
+                label_plural: 'Permissions'

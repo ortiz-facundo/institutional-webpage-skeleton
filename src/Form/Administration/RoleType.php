@@ -14,32 +14,36 @@ use Symfony\Component\Form\Extension\Core\Type\TextType;
 use Symfony\Component\Form\FormBuilderInterface;
 use Symfony\Component\OptionsResolver\OptionsResolver;
 use Symfony\Component\Validator\Constraints as Assert;
+use Symfony\Contracts\Translation\TranslatorInterface;
 
 class RoleType extends AbstractType
 {
-    public function __construct(private readonly PermissionRepository $permissions)
-    {
+    public function __construct(
+        private readonly PermissionRepository $permissions,
+        private readonly TranslatorInterface $translator,
+    ) {
     }
 
     public function buildForm(FormBuilderInterface $builder, array $options): void
     {
         $builder
             ->add('name', TextType::class, [
-                'label' => 'Role name (e.g. ROLE_EDITOR)',
+                'label' => $this->translator->trans('app.administration.form.role.name'),
                 'constraints' => [
-                    new Assert\NotBlank(),
+                    new Assert\NotBlank(message: $this->translator->trans('app.shared.validators.required')),
                     new Assert\Length(min: 3, max: 50),
-                    new Assert\Regex('/^ROLE_[A-Z0-9_]+$/', 'Role names must be UPPER_SNAKE_CASE and start with ROLE_.'),
+                    new Assert\Regex('/^ROLE_[A-Z0-9_]+$/', $this->translator->trans('app.role.name.invalid_format')),
                 ],
             ])
             ->add('permissions', EntityType::class, [
                 'class'        => Permission::class,
-                'choice_label' => 'name',
+                'choice_label' => fn (Permission $p) => $this->translator->trans('permission.' . $p->getName() . '.label'),
                 'choices'      => $this->loadPermissionChoices(),
                 'multiple'     => true,
                 'expanded'     => true,
                 'by_reference' => false,
-                'constraints'  => [new Assert\Count(min: 1, minMessage: 'Assign at least one permission.')],
+                'label'        => $this->translator->trans('app.administration.form.role.permissions'),
+                'constraints'  => [new Assert\Count(min: 1, minMessage: $this->translator->trans('app.role.permission.min'))],
             ]);
     }
 

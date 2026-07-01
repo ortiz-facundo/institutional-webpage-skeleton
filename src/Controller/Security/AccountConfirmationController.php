@@ -13,6 +13,7 @@ use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
+use Symfony\Contracts\Translation\TranslatorInterface;
 
 /**
  * Public route used by the link emailed to a freshly-created user.
@@ -34,6 +35,7 @@ final class AccountConfirmationController extends AbstractController
         private readonly AccountTokenValidator $validator,
         private readonly ChangeUserStateToActive $toActive,
         private readonly EntityManagerInterface $em,
+        private readonly TranslatorInterface $translator,
     ) {
     }
 
@@ -77,11 +79,11 @@ final class AccountConfirmationController extends AbstractController
                 // Re-validate failed (e.g., admin disabled the user in
                 // the millisecond between GET and POST). Surface a clear
                 // error instead of a 500.
-                $this->addFlash('error', 'Your account could not be activated. Please contact your administrator.');
+                $this->addFlash('error', $this->translator->trans('confirm.activation_failed'));
                 return $this->render('security/confirm_invalid.html.twig');
             }
 
-            $this->addFlash('success', 'Password set. You can now sign in.');
+            $this->addFlash('success', $this->translator->trans('confirm.success'));
             return $this->redirectToRoute('security_login');
         }
 

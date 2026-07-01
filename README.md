@@ -179,7 +179,14 @@ curl -sI http://localhost:8000/admin | head -2
 # → Location: http://localhost:8000/login
 ```
 
-The test user is created by the first-time seed:
+### Language / locale
+
+The entire UI is bilingual (English + Spanish). Spanish is the default for
+unauthenticated traffic (`/`, `/login`, `/account/confirm`); signed-in
+users can pick a language under **Perfil y Ajustes → Idioma** (English:
+**Profile & Settings → Language**). The preference is stored on the
+`User` row, not in a cookie — logging out returns the anonymous flow to
+Spanish. See `AGENTS.md` §"Internationalization" for the full convention.
 
 | Field | Value |
 |---|---|

@@ -1,0 +1,62 @@
+# Account module — English (source of truth).
+#
+# Five areas:
+#   1. `app.account.profile.*` — the unified /account/profile-settings hub
+#      h1 + subtitle (Profile & Settings), and the profile header card
+#      (roles, account-state, no-roles placeholder).
+#   2. `app.account.menu.*` — the settings menu groups (Account / Security
+#      / Preferences / Danger zone) and items, plus the disabled "soon"
+#      badge and "Coming soon" tooltip.
+#   3. `app.account.change_password.*` — the change-password section page
+#      title, description, submit, back link, and the controller's flash
+#      messages.
+#   4. `app.account.locale.*` — the language switcher (label, options,
+#      saved flash).
+#
+# `index.settings` + `index.select_hint` are the hub h2 + helper line.
+
+app:
+    account:
+        profile:
+            title: 'Profile & Settings'
+            subtitle: 'Your identity and configuration.'
+            header:
+                roles: 'Roles'
+                state: 'Account state'
+                no_roles: 'No roles assigned'
+        menu:
+            group:
+                account: 'Account'
+                security: 'Security'
+                preferences: 'Preferences'
+                danger_zone: 'Danger zone'
+            item:
+                edit_profile: 'Edit profile'
+                change_password: 'Change password'
+                active_sessions: 'Active sessions'
+                two_factor: 'Two-factor authentication'
+                locale: 'Language'
+                notifications: 'Notifications'
+                disable_account: 'Disable account'
+            soon: 'soon'
+            coming_soon: 'Coming soon'
+        index:
+            settings: 'Settings'
+            select_hint: 'Select a config item below.'
+        change_password:
+            title: 'Change password'
+            description: "Pick a new password. You'll need to enter your current one to confirm."
+            submit: 'Update password'
+            back: 'Back to settings'
+        flash:
+            password_updated: 'Password updated.'
+            password_incorrect: 'Current password is incorrect.'
+        locale:
+            title: 'Language'
+            description: 'Choose the language used across the backoffice, account settings, and emails.'
+            label: 'Language'
+            options:
+                en: 'English'
+                es: 'Spanish'
+            saved: 'Language updated.'
+            save: 'Save language'

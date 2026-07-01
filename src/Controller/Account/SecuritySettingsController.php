@@ -16,6 +16,7 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
+use Symfony\Contracts\Translation\TranslatorInterface;
 
 /**
  * Self-service "Change password" section, the first leaf under the
@@ -44,6 +45,7 @@ final class SecuritySettingsController extends AbstractController
         private readonly UserPasswordHasherInterface $hasher,
         private readonly EntityManagerInterface $em,
         private readonly LoggerInterface $auditLogger,
+        private readonly TranslatorInterface $translator,
     ) {
     }
 
@@ -65,7 +67,9 @@ final class SecuritySettingsController extends AbstractController
             $new = (string) $form->get('newPassword')->getData();
 
             if (!$this->verifyCurrent->verify($user, $current)) {
-                $form->get('currentPassword')->addError(new FormError('Current password is incorrect.'));
+                $form->get('currentPassword')->addError(new FormError(
+                    $this->translator->trans('app.account.flash.password_incorrect')
+                ));
                 return $this->render('account/change_password.html.twig', ['form' => $form]);
             }
 
@@ -78,7 +82,7 @@ final class SecuritySettingsController extends AbstractController
                 'ip'         => $request->getClientIp(),
             ]);
 
-            $this->addFlash('success', 'Password updated.');
+            $this->addFlash('success', $this->translator->trans('app.account.flash.password_updated'));
             return $this->redirectToRoute('account_change_password');
         }
 

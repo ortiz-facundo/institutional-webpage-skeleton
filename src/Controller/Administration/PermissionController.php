@@ -11,13 +11,16 @@ use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
+use Symfony\Contracts\Translation\TranslatorInterface;
 
 #[Route('/admin/permissions', name: 'administration_permission_')]
 #[IsGranted(Perm::PERMISSION_MANAGE_PERMISSIONS)]
 final class PermissionController extends AbstractController
 {
-    public function __construct(private readonly PermissionRepository $permissions)
-    {
+    public function __construct(
+        private readonly PermissionRepository $permissions,
+        private readonly TranslatorInterface $translator,
+    ) {
     }
 
     #[Route('', name: 'list', methods: ['GET'])]
@@ -27,10 +30,10 @@ final class PermissionController extends AbstractController
 
         return $this->render('administration/permission/list.html.twig', [
             'items'  => $items,
-            'title'  => 'Permissions',
+            'title'  => $this->translator->trans('app.administration.permission.list_title'),
             'trail'  => [
-                ['label' => 'Dashboard', 'path' => 'backoffice_dashboard'],
-                ['label' => 'Permissions', 'path' => null],
+                ['label' => $this->translator->trans('app.administration.crud.breadcrumbs.dashboard'), 'path' => 'backoffice_dashboard'],
+                ['label' => $this->translator->trans('app.administration.permission.list_title'), 'path' => null],
             ],
         ]);
     }

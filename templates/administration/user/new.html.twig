@@ -14,9 +14,7 @@
            the admin is committing to before they click Create. #}
         {% block crud_form_submit_help %}
             <div class="mt-4 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-                The new account will start in <span class="font-mono">USER_STATE_PENDING</span>
-                state. A confirmation email will be sent so the user can set their password
-                and activate the account.
+                {{ 'app.administration.user.new.help'|trans }}
             </div>
         {% endblock %}
     {% endembed %}

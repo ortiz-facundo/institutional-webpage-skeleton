@@ -18,6 +18,7 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
+use Symfony\Contracts\Translation\TranslatorInterface;
 
 #[Route('/admin/users', name: 'administration_user_')]
 #[IsGranted(Perm::PERMISSION_MANAGE_USERS)]
@@ -25,11 +26,12 @@ final class UserController extends AbstractCrudController
 {
     public function __construct(
         EntityManagerInterface $em,
+        TranslatorInterface $translator,
         private readonly UserRepository $users,
         private readonly UserStateTransitionService $stateTransition,
         private readonly Security $security,
     ) {
-        parent::__construct($em);
+        parent::__construct($em, $translator);
     }
 
     protected function getEntityClass(): string
@@ -56,9 +58,9 @@ final class UserController extends AbstractCrudController
     protected function getListColumns(): array
     {
         return [
-            ['label' => 'Email', 'path' => 'email'],
-            ['label' => 'Name',  'path' => 'name'],
-            ['label' => 'State', 'path' => 'state', 'cell_partial' => '_state_pill.html.twig'],
+            ['label' => $this->translator->trans('app.administration.columns.user.email'), 'path' => 'email'],
+            ['label' => $this->translator->trans('app.administration.columns.user.name'),  'path' => 'name'],
+            ['label' => $this->translator->trans('app.administration.columns.user.state'), 'path' => 'state', 'cell_partial' => '_state_pill.html.twig'],
         ];
     }
 
@@ -69,7 +71,12 @@ final class UserController extends AbstractCrudController
 
     protected function getEntityLabel(): string
     {
-        return 'User';
+        return $this->translator->trans('app.administration.entity.user.label');
+    }
+
+    protected function getEntityLabelPlural(): string
+    {
+        return $this->translator->trans('app.administration.entity.user.label_plural');
     }
 
     protected function getEntityDisplayName(object $entity): string
@@ -164,10 +171,9 @@ final class UserController extends AbstractCrudController
             return parent::getCreatedFlashMessage($entity);
         }
         if ($entity->isPending()) {
-            return sprintf(
-                'User created. Confirmation email sent to %s.',
-                $entity->getEmail()
-            );
+            return $this->translator->trans('app.administration.flash.user_created', [
+                '%email%' => $entity->getEmail(),
+            ]);
         }
         return parent::getCreatedFlashMessage($entity);
     }
@@ -182,16 +188,22 @@ final class UserController extends AbstractCrudController
     {
         $token = $request->request->get('_token');
         if (!$this->isCsrfTokenValid('resend_confirmation' . $id, $token)) {
-            throw new \Symfony\Component\Security\Core\Exception\AccessDeniedException('Invalid CSRF token.');
+            throw new \Symfony\Component\Security\Core\Exception\AccessDeniedException(
+                $this->translator->trans('app.administration.user.invalid_csrf')
+            );
         }
 
         $user = $this->users->find($id);
         if ($user === null) {
-            throw $this->createNotFoundException('User not found.');
+            throw $this->createNotFoundException(
+                $this->translator->trans('app.administration.user.not_found')
+            );
         }
 
         $this->stateTransition->resendConfirmation($user);
-        $this->addFlash('success', sprintf('Confirmation email re-sent to %s.', $user->getEmail()));
+        $this->addFlash('success', $this->translator->trans('app.administration.flash.confirmation_resent', [
+            '%email%' => $user->getEmail(),
+        ]));
         return $this->redirectToRoute('administration_user_list');
     }
 

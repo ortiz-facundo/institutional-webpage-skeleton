@@ -5,21 +5,24 @@
 
     Contract:
       @var state string   one of User::USER_STATE_* (constant name)
+
+    Labels are looked up under `app.shared.state.<STATE>` in the
+    `messages` domain. See translations/shared/messages.<locale>.yaml.
 #}
 {% if state == constant('App\\Entity\\Administration\\User::USER_STATE_ACTIVE') %}
     <span class="inline-flex items-center gap-1.5 rounded-md bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700">
         <span aria-hidden="true" class="h-2 w-2 shrink-0 rounded-full bg-emerald-500"></span>
-        Active
+        {{ 'app.shared.state.USER_STATE_ACTIVE'|trans }}
     </span>
 {% elseif state == constant('App\\Entity\\Administration\\User::USER_STATE_PENDING') %}
     <span class="inline-flex items-center gap-1.5 rounded-md bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700">
         <span aria-hidden="true" class="h-2 w-2 shrink-0 rounded-full bg-amber-500"></span>
-        Pending
+        {{ 'app.shared.state.USER_STATE_PENDING'|trans }}
     </span>
 {% elseif state == constant('App\\Entity\\Administration\\User::USER_STATE_DISABLED') %}
     <span class="inline-flex items-center gap-1.5 rounded-md bg-rose-50 px-2 py-0.5 text-xs font-medium text-rose-700">
         <span aria-hidden="true" class="h-2 w-2 shrink-0 rounded-full bg-rose-500"></span>
-        Disabled
+        {{ 'app.shared.state.USER_STATE_DISABLED'|trans }}
     </span>
 {% else %}
     <span class="text-xs text-stone-500">{{ state }}</span>

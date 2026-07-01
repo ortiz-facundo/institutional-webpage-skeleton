@@ -1,0 +1,19 @@
+# Shared module — English (source of truth).
+#
+# Cross-cutting strings that are reused by 2+ modules and don't fit
+# any single module's namespace. Currently this is just the
+# `state.<STATE>` labels (used by templates/_state_pill.html.twig and
+# the UserType state selector) and a couple of generic errors.
+#
+# State values are the constant NAMES from App\Entity\Administration\User
+# so the key is the same string the form submits and the entity stores.
+
+app:
+    shared:
+        state:
+            USER_STATE_ACTIVE: 'Active'
+            USER_STATE_PENDING: 'Pending'
+            USER_STATE_DISABLED: 'Disabled'
+        errors:
+            not_found: 'Entity not found.'
+            invalid_csrf: 'Invalid CSRF token.'
