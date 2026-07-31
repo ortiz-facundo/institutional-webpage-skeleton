@@ -1,298 +1,169 @@
-# Nova Argentum — Symfony Infrastructure Plan
+# Symfony Backoffice Skeleton — Infrastructure Plan
+
+> The current state of the skeleton. "Why" questions should consult this
+> file. "How" questions should consult `README.md` and `AGENTS.md`.
 
 ## Stack (confirmed)
-- **App layout:** Symfony at repo root (`/home/aku/dev/web-nova-argentum`)
-- **PHP 8.3 / Symfony 7.2 / Twig / Maker / Profiler / symfony/apache-pack**
-- **Doctrine ORM** (`symfony/orm-pack`) — adds `doctrine/orm`, `doctrine-bundle`, `doctrine-migrations-bundle`
-- **PostgreSQL 16** in Docker
+
+- **App layout:** Symfony at repo root (`/home/aku/dev/symfony-backoffice-skeleton`)
+- **PHP 8.4 / Symfony 7.4 / Twig / Maker / Profiler / symfony/apache-pack**
+- **Doctrine ORM** (`symfony/orm-pack`) — adds `doctrine/orm`,
+  `doctrine-bundle`, `doctrine-migrations-bundle`
+- **MariaDB 10.11** in Docker (chosen for parity with the cPanel
+  shared-hosting MariaDB used by the downstream projects)
 - **pentatrion/vite-bundle 8.x** + **Vite 5** + **Tailwind 3.4** + **PostCSS 8** + **Autoprefixer 10**
 - **Composer via `composer:2` service in Docker** (no host PHP)
-- **Apache port: 8000** (8080 is taken by WordPress but will be freed in Step 0)
+- **Apache port: 8000** (single container, no `php-fpm` + `nginx`)
 
----
+## Container shape
 
-## Step 0 — Free the workspace
+Three services in `docker-compose.yml`:
 
-> **Scope:** read-only stop of the two competing containers. Nothing in this project is touched.
+- `php` — `php:8.4-apache`. Image is rebuilt whenever the `Dockerfile`
+  changes. Mounts `./` to `/var/www/html`. Exposes `8000:80`.
+- `database` — `mariadb:10.11`. Healthcheck on `healthcheck.sh
+  --connect --innodb_initialized`. Loopback-mapped to `127.0.0.1:33067`
+  from the host (`compose.override.yaml`) so a host MariaDB on `:3306`
+  won't collide.
+- `composer` — `composer:2`. `profiles: ['tools']`, never auto-starts.
+  Runs as `${UID:-1000}:${GID:-1000}` so generated `vendor/` files are
+  owned by the host user.
+- `mailer` — `axllent/mailpit`. Defined in `compose.override.yaml` so
+  the prod compose file doesn't carry it. Web UI on
+  `http://localhost:8025`, SMTP on `mailer:1025`.
 
-```bash
-docker stop skeleton-web-wp-woo-wordpress-1 skeleton-web-wp-woo-mysql-1
-docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
-```
+## Why MariaDB
 
-After this: port 8080 is free, port 3306 is free (we won't reuse either — Symfony on 8000, Postgres on 5432). Their data persists in Docker volumes; this is a stop, not a remove.
+The downstream projects both deploy to cPanel shared hosting, which
+exposes MariaDB 10.11 (`MariaDB1010Platform`). Running the same version
+in dev means Doctrine migrations, query syntax, and platform-specific
+behaviour (AUTO_INCREMENT, `TIMESTAMP(0)`, integer types) match
+exactly. PostgreSQL was the original target (visible in the
+`4f9d474` migration SQL); the conversion to MariaDB happened in the
+`web-nova-argentum` history and is folded into the skeleton here.
 
-**Result:** Symfony infra has the machine to itself until you decide to restart the WordPress project.
+## Why no `vendor/` named volume
 
----
+Earlier iterations tested `vendor:`, `var:`, and `node_modules:` as
+named volumes to avoid the host/container UID mismatch. The chosen
+approach is:
 
-## Step 1 — Docker infrastructure (Apache + PHP + Postgres + Composer sidecar)
+- **Bind-mount `./` to `/var/www/html`** for the entire project. This
+  means source code edits on the host are visible inside the container
+  immediately (no rebuild).
+- **`composer` service runs as host UID** so `vendor/` is owned by the
+  host user. No root-owned-volume problem.
+- **`var/` is bind-mounted** (because it's already under `./`). The
+  container can write to it; the host sees the cache and log files.
+- **`node_modules/` is bind-mounted** alongside the project. `npm run
+  build` runs on the host (since `npm run dev` is also on the host for
+  HMR); the container only serves the already-built `public/build/`
+  files.
 
-**Files to create at repo root:**
+## Why `php:8.4-apache` (single container)
 
-### `Dockerfile` (PHP 8.3 + Apache)
-- Base: `php:8.3-apache`
-- `apt-get install` system libs: `libicu-dev` (intl), `libpq-dev` (pdo_pgsql), `libzip-dev` (zip), `unzip`, `git`
-- `docker-php-ext-install intl opcache pdo_pgsql zip`
-- `pecl install apcu && docker-php-ext-enable apcu`
-- `a2enmod rewrite` and `a2dissite 000-default`
-- Drop a custom Apache vhost `nova-argentum.conf` → `DocumentRoot /var/www/html/public`, `<Directory /var/www/html/public> AllowOverride All Require all granted</Directory>`
-- `docker-php-ext-enable opcache` + a `zz-opcache.ini` (recommended settings for dev)
-- `chown -R www-data:www-data /var/www/html` for bind-mount friendliness
-- `EXPOSE 80`
+The cPanel shared-hosting production target runs Apache + mod_php. To
+match dev/prod behaviour, the docker container also runs Apache + mod_php.
+A `php-fpm` + `nginx` setup would be more performant but would require
+keeping the prod nginx config in sync manually, which is a footgun for
+a small project.
 
-### `docker-compose.yml`
-```yaml
-name: nova-argentum
-services:
-  php:
-    build: .
-    container_name: nova-argentum-php
-    ports: ["8000:80"]
-    volumes:
-      - ./:/var/www/html
-      - vendor:/var/www/html/vendor
-      - var:/var/www/html/var
-      - node_modules:/var/www/html/node_modules
-    depends_on:
-      database:
-        condition: service_healthy
-    environment:
-      DATABASE_URL: "postgresql://app:!ChangeMe!@database:5432/app?serverVersion=16&charset=utf8"
-  database:
-    image: postgres:16-alpine
-    container_name: nova-argentum-db
-    environment:
-      POSTGRES_DB: app
-      POSTGRES_USER: app
-      POSTGRES_PASSWORD: "!ChangeMe!"
-    volumes:
-      - db_data:/var/lib/postgresql/data
-    ports: ["127.0.0.1:5432:5432"]
-    healthcheck:
-      test: ["CMD", "pg_isready", "-U", "app", "-d", "app"]
-      interval: 5s
-      timeout: 5s
-      retries: 10
-  composer:
-    image: composer:2
-    container_name: nova-argentum-composer
-    volumes:
-      - ./:/app
-      - vendor:/app/vendor
-    working_dir: /app
-    profiles: ["tools"]   # only started when explicitly requested
-volumes:
-  vendor:
-  var:
-  node_modules:
-  db_data:
-```
-- Bind-mount `./:/var/www/html` for hot-reload of source code
-- Named volumes for `vendor/`, `var/`, `node_modules/` (avoids host/container perf/sync issues)
-- `composer` service uses `profiles: [tools]` so it doesn't start with `docker compose up` — only when needed via `docker compose run --rm --profile tools composer ...`
+The `php:8.4-apache` image is pinned to 8.4 because `doctrine/doctrine-bundle`
+3.2 and `doctrine-migrations-bundle` 4.0 require PHP 8.4. Don't downgrade
+those packages.
 
-### `.dockerignore`
-Excludes `.git`, `node_modules`, `vendor`, `var`, `public/build`, `.env.local`, `*.log`, `.opencode`, `Logo*.jpeg` (no need to copy assets into the build context).
+## Why Vite 5
 
----
+Vite 5 is the last Vite line that supports Node 18 (the host's installed
+Node). Vite 6+ requires Node 18.18+ but is increasingly Node 20+ focused;
+Vite 8 requires Node 20.19+. The host is Node 18.19, so Vite 5 is the
+correct pinning. Don't bump Vite past 5 without also upgrading Node.
 
-## Step 2 — Symfony initialization
+The `pentatrion/vite-bundle` extension is the Symfony integration. Its
+config alias is `pentatrion_vite:`, not `vite:` — using `vite:` will fail
+with "no extension able to load the configuration for 'vite'".
 
-**Approach:** since the repo is non-empty, scaffold in a temp dir and `rsync` into the root (handles dotfiles cleanly, never overwrites `Logo*.jpeg` or `.opencode/`).
+## Why no Symfony UX
 
-```bash
-TMP=$(mktemp -d)
-docker compose run --rm --profile tools composer create-project symfony/skeleton:^7.2 "$TMP" --no-interaction
-rsync -a "$TMP"/ /home/aku/dev/web-nova-argentum/
-rm -rf "$TMP"
-docker compose run --rm --profile tools composer require \
-  twig \
-  symfony/orm-pack \
-  symfony/maker-bundle:^1 \
-  symfony/profiler-pack \
-  symfony/apache-pack \
-  pentatrion/vite-bundle
-docker compose run --rm --profile tools composer require --dev doctrine/doctrine-fixtures-bundle
-```
+The skeleton ships only what is needed for the backoffice. Adding
+`symfony/ux-twig-component`, `symfony/ux-translator`, or similar UX
+packages is the call of downstream projects when they need a
+campaign-specific homepage. The skeleton keeps the surface area small.
 
-What this produces at repo root (in addition to existing `Logo1.jpeg`, `Logo2.jpeg`, `.opencode/`):
-- `bin/console`, `composer.json`, `composer.lock`, `symfony.lock`
-- `config/` (bundles.php, packages/, routes/, services.yaml)
-- `public/index.php` (+ `.htaccess` from apache-pack)
-- `src/Kernel.php`, `src/Controller/.gitignore`, `src/Entity/.gitignore`
-- `templates/` (base.html.twig from twig recipe)
-- `var/`, `vendor/` (named volumes, not in git)
-- `.env`, `.env.dev`, `.env.test`, `.env.test.example`
-- `assets/app.js` (entry, from vite-bundle recipe)
-- `config/packages/vite.yaml` (from vite-bundle recipe)
-- Updated `templates/base.html.twig` (vite-bundle recipe injects the entry tags)
-- `migrations/` (doctrine-migrations)
-- Updated root `.gitignore` (Symfony recipe will add `var/`, `vendor/`, `public/build/`, etc. — I will merge it with the existing 4-line file rather than clobbering it)
+## Why the `app` translation domain is empty
 
-**Will not touch:** `Logo1.jpeg`, `Logo2.jpeg`, `.opencode/`, `.git/`, the existing root `.gitignore` entries (`node_modules/`, `.DS_Store`, `.vscode/`, `.idea/`).
+The skeleton ships without a public homepage. The `app` translation
+domain (`translations/app/messages.<locale>.yaml`) is reserved for
+downstream projects that ship a public homepage (e.g.
+`web-nova-argentum` uses it for the institutional landing copy). In
+the skeleton, the `app` domain is intentionally absent — see
+`AGENTS.md` §"Translation catalogs".
 
-**Manual inputs:** none — Symfony Flex recipes run automatically and don't prompt in non-interactive mode.
+## Why the redirect at `/`
 
----
+The skeleton's `HomeController` redirects `/` to `/login`. This makes
+the "no public homepage" intent explicit and gives unauthenticated
+visitors somewhere useful to land. Downstream projects that want a
+public homepage override `HomeController` and add a
+`templates/home/` directory.
 
-## Step 3 — Vite + Tailwind + PostCSS + Autoprefixer
+## Files that the skeleton ships
 
-Host already has Node 18.19 and npm 9.2 (sufficient for Vite 5, Tailwind 3.4).
+| Path | Purpose |
+|---|---|
+| `Dockerfile` | `php:8.4-apache` + intl/opcache/pdo_mysql/zip + vhost |
+| `docker-compose.yml` | php / database / composer services |
+| `compose.override.yaml` | Dev-only override (DB port + Mailpit) |
+| `composer.json` / `composer.lock` / `symfony.lock` | PHP deps |
+| `bin/console` | Symfony CLI |
+| `config/` (bundles, packages, routes, services) | Symfony config |
+| `apache/skeleton.conf` | DocumentRoot → `public/`, AllowOverride All |
+| `docker/php/{opcache,apcu}.ini` | PHP runtime tuning |
+| `src/` | App code (modular: Account, Administration, Backoffice, Security, Shared) |
+| `templates/` | Twig templates (mirrors the module split) |
+| `translations/` | Per-module subfolder translations (en + es) |
+| `migrations/` | Doctrine migrations (initial schema + permission seed + state machine + locale) |
+| `assets/` | Vite inputs (`app.js` + `styles/app.css`) |
+| `vite.config.js` / `tailwind.config.js` / `postcss.config.js` | Frontend pipeline |
+| `bin/deploy.php` / `scripts/build-cpanel-zip.sh` / `README_DEPLOY.md` / `src/Command/Deploy/SeedProdCommand.php` | cPanel/FTP deploy tooling |
+| `BRANCHING.md` | Downstream rebase workflow |
+| `AGENTS.md` / `README.md` / `INFRASTRUCTURE_PLAN.md` | Documentation |
 
-```bash
-# These are run on the HOST (not in Docker) so HMR is instant and we keep host performance
-npm init -y >/dev/null  # only if pentatrion's recipe didn't already create package.json
-npm install --save-dev vite@^5 @symfony/vite-dev-runtime tailwindcss@^3.4 postcss@^8 autoprefixer@^10
-npx tailwindcss init -p
-```
+## Migration ordering
 
-If `pentatrion/vite-bundle`'s recipe already wrote `package.json` (likely), I'll review it and merge dependencies rather than `npm init -y`. The `npm install` will be adjusted accordingly.
+The skeleton's migrations are ordered by ID and apply cleanly to a fresh
+MariaDB 10.11 database:
 
-### `vite.config.js` (only if recipe didn't already write a usable one)
-```js
-import { defineConfig } from 'vite';
-import symfonyVite from '@symfony/vite-dev-runtime';
+1. `Version20260619042333` — initial schema (permission, role, app_user,
+   join tables). MariaDB-flavoured.
+2. `Version20260619042400` — seed the permission catalog from
+   `App\Security\Permission`.
+3. `Version20260625001659` — re-seed any new permission entries (idempotent).
+4. `Version20260626000000` — `app_user.state` + `account_confirmation_token`
+   table.
+5. `Version20260626000100` — `app_user.password` nullable.
+6. `Version20260701000000` — `app_user.locale` (nullable).
 
-export default defineConfig({
-  plugins: [symfonyVite()],
-  server: { host: '0.0.0.0', port: 5173, strictPort: true },
-  build: {
-    rollupOptions: {
-      input: { app: './assets/app.js' },
-    },
-  },
-});
-```
+The PostgreSQL-specific `BIGSERIAL` and `INT GENERATED BY DEFAULT AS
+IDENTITY` from the original snapshot have been rewritten to MariaDB's
+`BIGINT AUTO_INCREMENT` and `INT AUTO_INCREMENT`. The `TIMESTAMP(0)
+WITHOUT TIME ZONE` columns have been rewritten to `DATETIME` (MariaDB
+flavour).
 
-### `tailwind.config.js` (overwritten by `tailwindcss init -p`)
-```js
-/** @type {import('tailwindcss').Config} */
-export default {
-  content: ['./templates/**/*.{html,twig,js}', './assets/**/*.{js,ts}'],
-  theme: { extend: {} },
-  plugins: [],
-};
-```
-I'll edit the `content` globs to include Twig templates.
+## What the skeleton does NOT ship
 
-### `postcss.config.js`
-```js
-export default {
-  plugins: { tailwindcss: {}, autoprefixer: {} },
-};
-```
-
----
-
-## Step 4 — Tailwind & Twig integration
-
-**`assets/app.css`** (created):
-```css
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
-```
-
-**`assets/app.js`** (verify the recipe-created one imports the css):
-```js
-import './app.css';
-console.log('Nova Argentum entry loaded');
-```
-
-**`.env.local`** (create, gitignored) for Vite HMR config:
-```
-VITE_SERVER_URL=http://localhost:5173
-```
-
-**`templates/base.html.twig`** (review + add explicit Vite tags if recipe didn't). Final form:
-```twig
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="UTF-8">
-    <title>{% block title %}Nova Argentum{% endblock %}</title>
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🪙</text></svg>">
-    {{ vite_entry_link_tags('app') }}
-    {% block stylesheets %}{% endblock %}
-</head>
-<body>
-    {% block body %}{% endblock %}
-    {{ vite_entry_script_tags('app') }}
-    {% block javascripts %}{% endblock %}
-</body>
-</html>
-```
-
----
-
-## Step 5 — Verification: HomeController + styled landing
-
-```bash
-docker compose run --rm --profile tools composer exec php bin/console make:controller HomeController
-```
-
-This creates:
-- `src/Controller/HomeController.php` → `#[Route('/', name: 'home')] public function index(): Response { return $this->render('home/index.html.twig'); }`
-- `templates/home/index.html.twig` (extends `base.html.twig`)
-
-I'll overwrite `templates/home/index.html.twig` with:
-```twig
-{% extends 'base.html.twig' %}
-{% block title %}Nova Argentum — Home{% endblock %}
-{% block body %}
-<main class="min-h-screen flex items-center justify-center bg-slate-100">
-  <div class="bg-purple-900 text-white font-bold p-10 rounded-2xl shadow-2xl text-center max-w-xl">
-    <h1 class="text-4xl mb-3">Nova Argentum</h1>
-    <p class="text-lg font-normal opacity-90">
-      Infrastructure online — Apache ✓ Twig ✓ Vite HMR ✓ Tailwind ✓
-    </p>
-  </div>
-</main>
-{% endblock %}
-```
-
-**End-to-end smoke test** (only if you want me to run it; otherwise the verification is for you to do):
-
-```bash
-docker compose up -d --build
-# wait ~10s for postgres healthcheck
-docker compose run --rm --profile tools composer exec php bin/console doctrine:database:create --if-not-exists
-# start vite dev server in another terminal
-npm run dev
-# open http://localhost:8000 — should show the purple card
-```
-
-If any of those fail, **I stop and ask per your instruction**.
-
----
-
-## Files that will be created or modified (summary)
-
-| Path | Created/Modified | Purpose |
-|---|---|---|
-| `Dockerfile` | created | PHP 8.3 + Apache + extensions + vhost |
-| `docker-compose.yml` | created | php / database / composer services |
-| `.dockerignore` | created | slim build context |
-| `.gitignore` | **merged** (not overwritten) | adds Symfony entries to existing 4-line file |
-| `composer.json` / `composer.lock` / `symfony.lock` | created | Symfony deps |
-| `bin/console` | created | Symfony CLI |
-| `config/` (bundles, packages, routes, services) | created | Symfony config |
-| `public/index.php` + `public/.htaccess` | created | Front controller + Apache routing |
-| `src/Kernel.php`, `src/Controller/`, `src/Entity/` | created | App code skeleton |
-| `templates/base.html.twig`, `templates/home/index.html.twig` | created/edited | Twig + Vite + Tailwind demo |
-| `assets/app.js`, `assets/app.css` | created | Vite entry + Tailwind directives |
-| `vite.config.js`, `tailwind.config.js`, `postcss.config.js` | created/edited | Build configs |
-| `package.json` | created/merged | Node deps |
-| `migrations/` | created | Doctrine migrations |
-| `.env`, `.env.dev` | created | Symfony env |
-| `.env.local` | created (gitignored) | Vite HMR URL |
-| `src/Controller/HomeController.php` | created | Verification route |
-
-**Preserved untouched:** `Logo1.jpeg`, `Logo2.jpeg`, `.opencode/`, `.git/`.
-
----
-
-## Confirmation needed before I execute
-
-Please confirm with a single "go" (or specify changes) and I'll execute Steps 0 → 5 in order, stopping at the first failure per your instruction. If you'd rather approve each step individually, say so and I'll pause after each.
+- **Public homepage.** Downstream projects add their own.
+- **Contact form / mailer.** Downstream projects that need a contact
+  form add `ContactController`, `ContactFormType`, `ContactMailer`, and
+  a `templates/contact/` directory.
+- **Domain entities** (catalog, inventory, listings, leads, etc.).
+  These are added per downstream project.
+- **Custom markdown / docs renderer.** Only the `README.md`,
+  `AGENTS.md`, `BRANCHING.md`, `INFRASTRUCTURE_PLAN.md`, and
+  `README_DEPLOY.md` files are shipped.
+- **OAuth / SSO.** Symfon's form login is the only auth path. Adding
+  OAuth is a downstream project's call.
+- **Tests.** The skeleton ships `tests/` from Symfony Flex but no test
+  code. Downstream projects add coverage as needed.
+- **CI configuration** (`.github/workflows/`). The skeleton does not
+  carry GitHub Actions files. Downstream projects add their own.

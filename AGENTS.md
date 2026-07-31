@@ -1,29 +1,33 @@
-# AGENTS.md — Nova Argentum
+# AGENTS.md — Symfony Backoffice Skeleton
 
 > Project context for AI coding assistants (Claude Code, Aider, Cursor, etc.).
-> Read this first. Update freely as the project evolves — this is the project's
-> living rulebook, not a read-only artifact.
+> Read this first. Update freely as the skeleton evolves — this is the
+> project's living rulebook, not a read-only artifact.
 
 ---
 
 ## TL;DR
 
-- Symfony institutional webpage for a land development and brokerage
-  business.
-- Stack: **PHP 8.4**, **Apache 2.4** (single container), **PostgreSQL 16**,
+- **Reusable Symfony backoffice base.** No public homepage — `GET /`
+  redirects to `/login`.
+- Stack: **PHP 8.4**, **Apache 2.4** (single container), **MariaDB 10.11**,
   **Vite 5**, **Tailwind 3.4**, **Doctrine ORM** (attribute mapping), Symfony
-  form login + stateless CSRF + login throttling.
-- Three Docker services: `php` (Apache), `database` (Postgres), `composer`
-  (sidecar, `profile=tools`, never auto-starts). Frontend assets build on the
-  host with `npm run build` / `npm run dev`.
-- No host PHP, no host Composer, no host Postgres — only Docker.
-- Authenticated **backoffice** gated by RBAC. Public homepage
-  at `/`, login at `/login`, dashboard at `/dashboard`, user/role/permission
-  CRUD under `/admin/...`, self-service at `/account/...`. **No public
-  registration** — admins create users via `/admin/users/new`, who confirm
-  via email link.
-- Dev test user: `test@nova-argentum.local` / `test` (`ROLE_ADMIN`,
+  form login + stateless CSRF + login throttling. **Dev/prod parity** — the
+  local `mariadb:10.11` container mirrors the cPanel shared-hosting MariaDB
+  version; `serverVersion` in the DSN pins Doctrine DBAL to the same
+  `MariaDB1010Platform` used in production.
+- Three Docker services: `php` (Apache), `database` (MariaDB), `composer`
+  (sidecar, `profile=tools`, never auto-starts). Frontend assets build on
+  the host with `npm run build` / `npm run dev`.
+- No host PHP, no host Composer, no host MariaDB — only Docker.
+- Authenticated **backoffice** gated by RBAC. Login at `/login`,
+  dashboard at `/dashboard`, user/role/permission CRUD under `/admin/...`,
+  self-service at `/account/...`. **No public registration** — admins
+  create users via `/admin/users/new`, who confirm via email link.
+- Dev test user: `test@skeleton.local` / `test` (`ROLE_ADMIN`,
   `USER_STATE_ACTIVE`).
+- **Two downstream projects** (`web-nova-argentum`, `sci_gestion`) track this
+  skeleton as a git remote and rebase off it. See `BRANCHING.md`.
 
 ---
 
@@ -31,11 +35,12 @@
 
 1. This file (you're here).
 2. `README.md` — full architecture, workflow, troubleshooting.
-3. `.opencode/skills/frontend-design/SKILL.md` — full aesthetic guidance.
-   **Required reading before any UI work.**
+3. `BRANCHING.md` — rebase workflow for the downstream projects.
 4. `INFRASTRUCTURE_PLAN.md` — rationale for the infrastructure decisions
    (only consult when "why" questions come up, e.g. why Vite 5 and not 6,
    why PHP 8.4 and not 8.3, why no named volumes for vendor/var).
+5. `.opencode/skills/frontend-design/SKILL.md` — full aesthetic guidance.
+   **Required reading before any UI work.**
 
 ---
 
@@ -75,10 +80,12 @@ In priority order. If you find yourself about to violate one of these, stop.
 10. **Never downgrade `doctrine/doctrine-bundle` below 3.2 or
     `doctrine-migrations-bundle` below 4.0.** Both require PHP 8.4; the
     Dockerfile is pinned to `php:8.4-apache` because of this.
-11. **Never name a Doctrine entity table `user` on Postgres.** `user` is a
-    reserved word and breaks unquoted queries. Our User entity uses
+11. **Never name a Doctrine entity table `user`.** It is a reserved
+    word in PostgreSQL and `user` is also the built-in MariaDB
+    account-management function, which means unquoted queries can break on
+    either engine. Our `User` entity uses
     `#[ORM\Table(name: 'app_user')]`. The migration that creates the
-    schema must use the same quoted/unquoted name. The `User` entity
+    schema must use the same unquoted/quoted name. The `User` entity
     lives at `App\Entity\Administration\User` (under the Administration
     module, because admins manage it).
 12. **Never define a permission string anywhere except `App\Security\Permission`.**
@@ -87,6 +94,16 @@ In priority order. If you find yourself about to violate one of these, stop.
     equality. A typo anywhere breaks RBAC silently. To add a permission:
     append a constant + add to `all()` + ship a new migration that calls
     `Permission::all()` in its `up()`.
+13. **Never add a public homepage to the skeleton.** The skeleton is
+    backoffice-only. Downstream projects that need a public homepage should
+    override `App\Controller\HomeController` and add their own
+    `templates/home/` directory. The skeleton's redirect is the baseline.
+14. **Never rename the skeleton brand strings in the source of truth.**
+    `Skeleton`, `skeleton.local`, `no-reply@skeleton.local`, etc. are the
+    skeleton identity. Downstream projects override them after forking
+    (see `README.md` §"Forking the skeleton"). The skeleton's
+    `test@skeleton.local` test user must remain unchanged — downstreams
+    replace it via `UserFixtures` or an admin override.
 
 ---
 
@@ -104,7 +121,7 @@ src/
 ├── Command/Dev/                       [shared] TestEmailCommand
 ├── Controller/
 │   ├── AbstractCrudController.php     [shared horizontal] CRUD base
-│   ├── HomeController.php             [shared] public homepage
+│   ├── HomeController.php             [shared] redirect to /login (overridable)
 │   ├── Account/                       [Account module] self-service
 │   │   ├── ProfileSettingsController.php
 │   │   └── SecuritySettingsController.php
@@ -121,36 +138,26 @@ src/
 │       └── LogoutController.php
 ├── DataFixtures/
 │   ├── AppFixtures.php                [shared] orchestrator
-│   ├── Account/                       [empty — reserved]
 │   ├── Administration/                PermissionFixtures, RoleFixtures, UserFixtures
-│   ├── Backoffice/                    [empty — reserved]
-│   └── Security/                      [empty — reserved]
 ├── Entity/
-│   ├── Account/                       [empty — reserved]
 │   ├── Administration/                Permission, Role, User
-│   ├── Backoffice/                    [empty — reserved]
 │   └── Security/                      AccountConfirmationToken
 ├── Form/
 │   ├── Account/                       ChangePasswordFormType
 │   ├── Administration/                RoleType, UserType
-│   ├── Backoffice/                    [empty — reserved]
 │   └── Security/                      AccountPasswordFormType
 ├── Mailer/
 │   └── Security/                      AccountMailer
 ├── Repository/
-│   ├── Account/                       [empty]
 │   ├── Administration/                PermissionRepository, RoleRepository, UserRepository
-│   ├── Backoffice/                    [empty]
 │   └── Security/                      AccountConfirmationTokenRepository
 ├── Security/                          [top-level — cross-cutting]
 │   ├── Permission.php                 central catalog (PERMISSION_*, all(), isValid())
 │   └── PermissionVoter.php            universal voter (matches PERMISSION_*)
 ├── Service/
 │   ├── Account/                       VerifyCurrentPassword
-│   ├── Administration/                [empty]
-│   ├── Backoffice/                    [empty]
 │   └── Security/
-│       ├── UserStateChecker.php       firewall gate (was in App\Security)
+│       ├── UserStateChecker.php       firewall gate
 │       └── UserLifecycle/             all state-machine + token services
 └── Twig/
     ├── UserAvatarExtension.php        [shared]
@@ -158,11 +165,10 @@ src/
         └── ImpersonationExtension.php
 
 templates/                              [mirrors the module split]
-├── base.html.twig                      [shared] public-site layout
+├── base.html.twig                      [shared] backoffice layout
 ├── _avatar.html.twig                   [shared]
 ├── _state_pill.html.twig               [shared]
 ├── form/theme.html.twig                [shared] Tailwind form theme
-├── home/index.html.twig                [shared] public homepage
 ├── shared/crud/                        [shared horizontal] CRUD partials
 │   ├── _breadcrumbs.html.twig
 │   ├── _delete_form.html.twig
@@ -176,29 +182,18 @@ templates/                              [mirrors the module split]
 │   ├── _nav_macros.html.twig
 │   └── dashboard/index.html.twig
 ├── account/                            [Account module — self-service]
-│   ├── base.html.twig
-│   ├── _menu.html.twig, _menu_group.html.twig, _section.html.twig,
-│   │   _back_link.html.twig, _profile_header.html.twig
-│   ├── index.html.twig
-│   └── change_password.html.twig
 ├── administration/                     [Administration module — CRUD]
-│   ├── permission/list.html.twig
-│   ├── role/{list,new,edit,view}.html.twig
-│   └── user/{list,new,edit,edit_roles,view}.html.twig
 └── security/                           [Security module]
     ├── login.html.twig, confirm.html.twig, confirm_invalid.html.twig
     └── emails/                         account-lifecycle templates
-        ├── activated.{html,txt}.twig
-        ├── confirmation.{html,txt}.twig
-        └── disabled.{html,txt}.twig
 
 config/packages/      Per-bundle configs. Symfony Flex writes via `###> pkg ###`
                       markers — **preserve them** so recipes stay idempotent on reinstall.
 config/routes/        Route imports only. Controllers are auto-discovered via attributes.
 migrations/           Doctrine migrations. Committed (flat — Doctrine convention).
-translations/
+translations/         Per-module subfolder convention
 ├── shared/, account/, administration/, backoffice/, security/   per-module
-│   └── security/messages.{en,es}.yaml   currently the only translations (emails)
+│   └── security/messages.{en,es}.yaml   source-of-truth translations
 docker/               Dockerfile support files (opcache, apcu). NOT in .dockerignore.
 apache/               vhost config. NOT in .dockerignore.
 .opencode/skills/     Skills, including frontend-design aesthetic guidance.
@@ -214,9 +209,9 @@ Module map:
 | **Backoffice** | Backoffice chrome: dashboard landing, layout, sidebar nav, nav renderer. |
 | **Shared** | Anything that spans ≥2 modules: `AbstractCrudController`, CRUD partials, `HomeController`, `UserAvatarExtension`, `Dev\TestEmailCommand`, `AppFixtures`. Lives at the type root (`src/Controller/`, `src/Twig/`, etc.) and at the top-level namespace (`App\Controller`, `App\Twig`). |
 
-When new business-domain entities (Listings, Properties, Leads) arrive, each
-gets its own module — not a "Business" bucket. The module name should match
-the domain concept.
+When new business-domain entities (e.g. catalog, inventory, listings) arrive
+in a downstream project, each gets its own module — not a "Business" bucket.
+The module name should match the domain concept.
 
 Everything else (`bin/`, `vendor/`, `var/`, `public/index.php`, `config/bundles.php`,
 `config/services.yaml`, `config/routes.yaml`, `src/Kernel.php`) is generated
@@ -230,7 +225,7 @@ or boilerplate — don't edit unless you know why.
 # Start the stack (rebuilds the php image if Dockerfile changed)
 docker compose up -d --build
 
-# Stop (keeps the Postgres data volume)
+# Stop (keeps the MariaDB data volume)
 docker compose down
 
 # Reset everything including the database
@@ -251,18 +246,18 @@ npm run build
 
 URLs once running:
 
-- App (public):  <http://localhost:8000>
-- Login:         <http://localhost:8000/login>
-- Dashboard:     <http://localhost:8000/dashboard>  (auth required)
-- Admin (CRUD):  <http://localhost:8000/admin/users>, `/admin/roles`, `/admin/permissions`
-- Profile:       <http://localhost:8000/account/profile-settings>
-- Mailpit (dev): <http://localhost:8025>  (SMTP capture UI)
-- Vite:          <http://localhost:5173>  (only when `npm run dev` is running)
-- DB:            `127.0.0.1:5432` from host, `database:5432` from inside containers
+- App:               <http://localhost:8000>  (redirects to /login)
+- Login:             <http://localhost:8000/login>
+- Dashboard:         <http://localhost:8000/dashboard>  (auth required)
+- Admin (CRUD):      <http://localhost:8000/admin/users>, `/admin/roles`, `/admin/permissions`
+- Profile:           <http://localhost:8000/account/profile-settings>
+- Mailpit (dev):     <http://localhost:8025>  (SMTP capture UI)
+- Vite:              <http://localhost:5173>  (only when `npm run dev` is running)
+- DB:                `127.0.0.1:33067` from host (loopback only; via `compose.override.yaml`), `database:3306` from inside containers
 
 Test user (dev fixtures, after running the first-time seed):
 
-- email:    `test@nova-argentum.local`
+- email:    `test@skeleton.local`
 - password: `test`
 - role:     `ROLE_ADMIN` (all five permissions)
 
@@ -304,8 +299,8 @@ Test user (dev fixtures, after running the first-time seed):
   - `PERMISSION_IMPERSONATE_USERS` — see "Impersonation" below
 - **Roles** are rows in the `role` table. Baseline fixtures seed `ROLE_ADMIN`
   (all 5 perms) and `ROLE_USER` (view only).
-- **Users** carry roles via the `user_role` join table. New registrations
-  get `ROLE_USER` by default; admins reassign via `/admin/users/{id}/edit`.
+- **Users** carry roles via the `user_role` join table. New users get
+  `ROLE_USER` by default; admins reassign via `/admin/users/{id}/edit`.
 - **The permission seed migration** runs `Permission::all()` and inserts one
   row per constant. The migration is idempotent (`ON CONFLICT DO NOTHING`).
 - **RoleFixtures is also idempotent for new permissions**: when a new
@@ -342,6 +337,25 @@ voter, `getRoles()` still saves you. Either alone is correct.
    `ROLE_ADMIN` automatically (the fixtures' `syncPermissions()` is
    idempotent for permission grants).
 5. Optionally assign the permission to other roles via the backoffice.
+
+---
+
+## Downstream rebase workflow
+
+See `BRANCHING.md` for the full procedure. The short version:
+
+- The skeleton is the **upstream** of the two downstream projects
+  (`web-nova-argentum`, `sci_gestion`).
+- Each downstream registers the skeleton as a remote: `git remote add skeleton
+  git@github.com:ortiz-facundo/symfony-backoffice-skeleton.git`.
+- Generic improvements go to the skeleton first, then propagate via
+  `git fetch skeleton && git rebase skeleton/main`.
+- Domain-specific work (public homepage, contact form, catalog, inventory)
+  stays in the downstream.
+
+When you change a shared module in the skeleton, **stop and tell the user**
+that the change needs to be lifted into the downstreams. The user (not the
+agent) decides when to rebase.
 
 ---
 
@@ -383,10 +397,6 @@ a new entity with full CRUD you only need four thin templates:
 `getEntityDisplayName(object $entity): string` hook the concrete
 controller overrides to label the entity in breadcrumbs and titles
 (e.g. User returns `name ?? email`; Role returns `name`).
-
-See `templates/administration/role/{list,new,edit,view}.html.twig` for the
-reference implementation. The `Role` entity is the canonical example
-of this pattern.
 
 ### Impersonation ("log in as")
 
@@ -481,20 +491,16 @@ also enforces the same minimum as defence in depth. The policy is enforced
 **only on set/reset** — existing hashes (including the test user's `test`)
 are grandfathered.
 
-i18n scope: **the entire UI** — every visible string in templates,
-controllers, forms, and the email templates. See §"Internationalization"
-below.
-
 ### Internationalization
 
 The entire UI is translated: every visible string in a Twig template,
 every flash / FormError thrown by a controller, every form label / help
-/ placeholder / constraint message, the email subjects + bodies, and
-the entity-derived labels (the `USER_STATE_*` pills, the permission
-catalog). Spanish (`es`) is the **default** for unauthenticated
-traffic and for any signed-in user whose `locale` column is `NULL`.
-English (`en`) is the **source-of-truth locale** — missing keys in the
-Spanish catalog fall back to the English string.
+/ placeholder / constraint message, the email subjects + bodies, and the
+entity-derived labels (the `USER_STATE_*` pills, the permission catalog).
+Spanish (`es`) is the **default** for unauthenticated traffic and for any
+signed-in user whose `locale` column is `NULL`. English (`en`) is the
+**source-of-truth locale** — missing keys in the Spanish catalog fall
+back to the English string.
 
 #### Resolution order
 
@@ -525,6 +531,12 @@ use `validators`. Keys are namespaced to avoid collisions.
 `en` files are the **source of truth**. `es` files are the
 translations. Missing `es` keys fall back to `en` automatically
 (Symfony's `fallback_locale: en`).
+
+**The `app/` translation domain is intentionally absent** in the skeleton.
+It is reserved for downstream projects that ship a public homepage (e.g.
+`web-nova-argentum` uses `translations/app/`) and is the deliberate
+exception to the per-module convention: marketing copy is shared across
+future public pages and does not belong to a single module.
 
 #### Adding a new string
 
@@ -582,6 +594,15 @@ Configured in `compose.override.yaml` as the `mailer` service: SMTP on
   capture in a throwaway mailbox. Mailtrap/MailHog don't exercise DNS,
   SPF, DKIM, or spam-folder routing — don't depend on them for prod checks.
 
+### Deploy tooling
+
+The skeleton ships `bin/deploy.php`, `scripts/build-cpanel-zip.sh`,
+`README_DEPLOY.md`, and `src/Command/Deploy/SeedProdCommand.php` — a
+cPanel/FTP-only deploy pipeline used by both downstream projects. See
+`README_DEPLOY.md` for the full procedure. Downstream projects override
+the cPanel hostname, FTP credentials, and the local repo path in
+`.env.local` (gitignored).
+
 ### Form theme
 
 `templates/form/theme.html.twig` overrides `form_div_layout.html.twig`
@@ -600,16 +621,30 @@ Override that block to restyle all of them in one go.
 
 ## Adding a new page
 
-For a non-CRUD public page: place the controller in the relevant module's
-`Controller/` folder (e.g. `App\Controller\Account\FooController`), extend
-`AbstractController`, add `#[Route('/foo', name: '<module>_foo')]`, and a
-thin `templates/<module>/foo/index.html.twig` that extends `base.html.twig`.
-Then `npm run build` (or have `npm run dev` running) so any new Tailwind
-classes pick up. Verify the route with
+The skeleton ships without a public homepage. To add one (in a downstream
+project):
+
+1. Override `src/Controller/HomeController.php`. Replace the redirect with
+   a render call to a new template.
+2. Add `templates/home/index.html.twig` (and `templates/home/*.twig`
+   partials) extending `base.html.twig`.
+3. Add `translations/app/messages.<locale>.yaml` for the public-domain
+   strings.
+4. Add any new Vite entry to `vite.config.js` and render via
+   `{{ vite_entry_link_tags('entry') }}` / `{{ vite_entry_script_tags('entry') }}`.
+5. Run `npm run build` to pick up new Tailwind classes.
+
+For a non-CRUD backoffice page: place the controller in the relevant
+module's `Controller/` folder, extend `AbstractController`, add
+`#[Route('/foo', name: '<module>_foo')]`, and a thin
+`templates/<module>/foo/index.html.twig` that extends
+`backoffice/base.html.twig`. Then `npm run build` (or have `npm run dev`
+running) so any new Tailwind classes pick up. Verify the route with
 `docker compose exec php bin/console debug:router | grep <module>_foo`.
 
-For a new entity with full CRUD see "Shared Twig CRUD base" above and
-follow the `Role` / `templates/administration/role/` pattern.
+For a new entity with full CRUD, follow "Shared Twig CRUD base" above and
+use the `Role` / `templates/administration/role/` pattern as the canonical
+reference.
 
 ---
 
@@ -645,19 +680,22 @@ docker compose exec php bin/console make:migration
 # Apply pending migrations
 docker compose exec php bin/console doctrine:migrations:migrate --no-interaction
 
-# Load fixtures (dev only — wipes data first)
-docker compose exec php bin/console doctrine:fixtures:load
+# Load fixtures (dev only — wipes data first unless --append)
+docker compose exec php bin/console doctrine:fixtures:load --append
 
 # Drop + recreate the database (dev only)
 docker compose exec php bin/console doctrine:database:drop --force
 docker compose exec php bin/console doctrine:database:create
 
-# Inspect the database directly (Postgres)
+# Inspect the database directly (MariaDB)
 docker compose exec php bin/console dbal:run-sql "SELECT id, name FROM role"
+# → table `role` (the table name is a SQL keyword in some engines; Doctrine
+#   always quotes identifiers, but use it consciously)
 ```
 
-Entity mapping is by PHP 8 attribute (not XML/YAML). Identity generation on
-Postgres is `identity` (configured in `config/packages/doctrine.yaml`).
+Entity mapping is by PHP 8 attribute (not XML/YAML). MariaDB uses
+`AUTO_INCREMENT` for identity columns by default — no special Doctrine
+configuration is required.
 
 ---
 
@@ -670,9 +708,9 @@ Postgres is `identity` (configured in `config/packages/doctrine.yaml`).
   vendor/pkg ###` markers that delimit Flex-managed sections. **Preserve them**
   so recipes stay idempotent on reinstall.
 - **Twig:** use blocks from `base.html.twig` (`title`, `body`, `stylesheets`,
-  `javascripts`) for public pages. For backoffice pages, extend
-  `backoffice/base.html.twig` (which itself extends `base.html.twig`).
-  For account/profile pages, extend `account/base.html.twig`.
+  `javascripts`) for backoffice pages. For account/profile pages, extend
+  `account/base.html.twig`. The backoffice chrome itself extends
+  `backoffice/base.html.twig`, which extends `base.html.twig`.
 - **Tailwind:** utility classes only. Don't add a CSS file outside
   `assets/styles/app.css`. Extend the theme in `tailwind.config.js`, not with
   custom CSS.
@@ -687,23 +725,25 @@ Postgres is `identity` (configured in `config/packages/doctrine.yaml`).
 - **Env vars:** add new ones to `.env` (committed defaults) and
   `.env.local` (personal overrides, gitignored).
 - **Permission names:** UPPER_SNAKE_CASE prefixed with `PERMISSION_`.
-  Role names: UPPER_SNAKE_CASE prefixed with `ROLE_`. Both names live in
-  the `name` column of their respective tables; uniqueness is enforced
+  Role names: UPPER_SNAKE_CASE prefixed with `ROLE_`. Both names live in the
+  `name` column of their respective tables; uniqueness is enforced
   by a unique index.
+- **Translation catalogs:** per-module subfolder
+  (`translations/<module>/messages.<locale>.yaml`). The `app` domain is
+  reserved for downstream projects with a public homepage.
 
 ---
 
 ## Design guidance — the project's living rulebook
 
-This is the project's evolving design rulebook. **Add new rules here as the
-brand matures.** The full aesthetic philosophy is in
+This is the skeleton's evolving design rulebook. **Add new rules here as
+the skeleton's brand matures.** The full aesthetic philosophy is in
 `.opencode/skills/frontend-design/SKILL.md` — read it before any UI work.
 
 ### Anti-patterns to avoid (from the skill)
 
 - Generic sans-serifs (Inter, Roboto, Arial, system-ui defaults).
-- Purple-on-white gradient clichés. (The home page's purple is a *placeholder
-  smoke-test color*; do not treat it as a brand choice.)
+- Purple-on-white gradient clichés.
 - Cookie-cutter, predictable component shapes and layouts.
 
 ### Backoffice visual language
@@ -770,19 +810,24 @@ add a `permission_class` field per item if you need to span modules.
   `tailwind.config.js` under `theme.extend`.
 - **No dark mode configured yet.** Add via `darkMode: 'class'` in
   `tailwind.config.js` if/when needed.
-- **No component library yet.** The home page is intentionally a single
-  self-contained block — no premature extraction into shared components.
+- **No homepage shipped.** Downstream projects add their own.
 
 ### Typography
 
-_To be filled in after the first design pass. Pick a distinctive display +
-body pair; document the choice here._
+The skeleton uses Georgia (`font-serif`) for page titles and the default
+sans-serif for everything else. When a downstream project picks a brand
+font pair, both surfaces (backoffice + the project's public homepage)
+must move together. The skel-shipped Georgia is a deliberately
+un-branded placeholder.
 
 ### Color palette
 
-_Stone + amber placeholder (see "Backoffice visual language" above). To be
-replaced after the first design pass with real brand colors, accent colors,
-and a neutral scale. Register them in Tailwind's `theme.extend.colors`._
+**Backoffice only in the skeleton.** Downstream projects that add a
+public homepage register their own brand palette in `tailwind.config.js`
+`theme.extend.colors` (e.g. `primary`, `accent`, `background`,
+`foreground`). The skeleton's stone + amber is the backoffice baseline
+and must not be changed by downstream projects that ship a public
+homepage — it would muddy the dichotomy between the two surfaces.
 
 ### Iconography
 
@@ -822,10 +867,11 @@ the icon map location).
   Don't downgrade those packages.
 - **`/docker/` and `/apache/` are in the build context.** They MUST NOT be
   in `.dockerignore`. This is the most easily-forgotten rule.
-- **PostgreSQL DSN host differs by environment.** `database:5432` from
-  inside containers (Docker service name), `127.0.0.1:5432` from the host.
-  The DSN in `.env` uses `database` because Symfony only reads it from
-  inside the container; from the host use `127.0.0.1`.
+- **MariaDB DSN host differs by environment.** `database:3306` from
+  inside containers (Docker service name), `127.0.0.1:33067` from the host
+  (mapped via `compose.override.yaml` so a host MariaDB on `:3306` won't
+  collide). The DSN in `.env` uses `database` because Symfony only reads
+  it from inside the container; from the host use `127.0.0.1:33067`.
 - **CSRF gotcha.** Symfony's `SameOriginCsrfTokenManager` is enabled
   by default. The HTML the server renders contains the literal string
   `value="csrf-token"` in the hidden CSRF input — **this is the
@@ -834,9 +880,11 @@ the icon map location).
   test for a POST, send `-H "Origin: http://localhost:8000" -H
   "Referer: http://localhost:8000/login"`, otherwise the firewall will
   reject the request. A regular browser sends these headers automatically.
-- **`User` table is `app_user`, not `user`.** Postgres reserves `user`.
-  Renaming the entity to use `user` later will break unquoted queries.
-  See hard rule #11.
+- **`User` table is `app_user`, not `user`.** Both PostgreSQL (the
+  original target) and MariaDB (`user` is the built-in account-management
+  function) treat `user` specially, which means unquoted queries can break
+  on either engine. Renaming the entity to use `user` later will break
+  unquoted queries. See hard rule #11.
 - **Form field `roles` on the User entity is shadowed by `User::getRoles()`.**
   `getRoles()` returns a `string[]` of role names; the underlying property
   is a `Collection<Role>`. Binding a Symfony form to a `roles` field with
@@ -845,6 +893,15 @@ the icon map location).
   around this via a `roleEntities` field with `mapped: false` + a
   `POST_SUBMIT` listener that diffs the chosen roles. Follow the same
   pattern for new forms that bind to User's roles.
+- **`/account/confirm` link is generated against `APP_URL`.** In `.env.local`
+  the dev value is `http://localhost:8000`. If you change the host port
+  (e.g. for sci_gestion's `+10` port shift), update `APP_URL` accordingly,
+  otherwise the confirmation emails will point at the wrong port.
+- **Skeleton identity placeholders** — `Skeleton`, `skeleton.local`,
+  `no-reply@skeleton.local`, etc. — must remain in the skeleton's source
+  of truth. Downstream projects replace them after forking (see
+  `README.md` §"Forking the skeleton"). Do not rename them in the skeleton
+  itself.
 
 ---
 
@@ -862,4 +919,9 @@ the icon map location).
    permission to the relevant roles via the backoffice.
 6. Does it add Tailwind classes the build doesn't know about? `npm run
    build` (or rely on `npm run dev` for HMR).
-7. **Do not commit.** Stop, summarize what you did, and let the user commit.
+7. **Does it belong in the skeleton or in a downstream?** If the change
+   is generic (RBAC, auth, i18n, CRUD base, deploy tooling), it belongs in
+   the skeleton. If it's domain-specific (a public homepage, a contact
+   form, catalog/inventory), it belongs in a downstream. Stop and ask the
+   user if you're unsure.
+8. **Do not commit.** Stop, summarize what you did, and let the user commit.

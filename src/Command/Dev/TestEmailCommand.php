@@ -50,7 +50,7 @@ final class TestEmailCommand extends Command
 
         $to = $input->getArgument('to');
         $email = (new Email())
-            ->from(new Address($_ENV['MAILER_FROM'] ?? 'no-reply@nova-argentum.local', $_ENV['MAILER_FROM_NAME'] ?? 'Nova Argentum'))
+            ->from(new Address($_ENV['MAILER_FROM'] ?? 'no-reply@skeleton.local', $_ENV['MAILER_FROM_NAME'] ?? 'Skeleton'))
             ->to($to)
             ->subject(sprintf('[%s] SMTP smoke test', $this->kernel->getEnvironment()))
             ->text(sprintf(

@@ -30,7 +30,7 @@ final class AccountMailer
     public function sendConfirmation(User $user, string $confirmationUrl, int $expiresInHours = 48): void
     {
         $email = (new TemplatedEmail())
-            ->from(new Address($_ENV['MAILER_FROM'] ?? 'no-reply@example.com', $_ENV['MAILER_FROM_NAME'] ?? 'Nova Argentum'))
+            ->from(new Address($_ENV['MAILER_FROM'] ?? 'no-reply@example.com', $_ENV['MAILER_FROM_NAME'] ?? 'Skeleton'))
             ->to(new Address($user->getEmail(), $user->getName() ?? $user->getEmail()))
             ->subject($this->translator->trans('email.confirmation.subject'))
             ->htmlTemplate('security/emails/confirmation.html.twig')
@@ -47,7 +47,7 @@ final class AccountMailer
     public function sendActivated(User $user): void
     {
         $email = (new TemplatedEmail())
-            ->from(new Address($_ENV['MAILER_FROM'] ?? 'no-reply@example.com', $_ENV['MAILER_FROM_NAME'] ?? 'Nova Argentum'))
+            ->from(new Address($_ENV['MAILER_FROM'] ?? 'no-reply@example.com', $_ENV['MAILER_FROM_NAME'] ?? 'Skeleton'))
             ->to(new Address($user->getEmail(), $user->getName() ?? $user->getEmail()))
             ->subject($this->translator->trans('email.activated.subject'))
             ->htmlTemplate('security/emails/activated.html.twig')
@@ -60,7 +60,7 @@ final class AccountMailer
     public function sendDisabled(User $user, ?string $reason): void
     {
         $email = (new TemplatedEmail())
-            ->from(new Address($_ENV['MAILER_FROM'] ?? 'no-reply@example.com', $_ENV['MAILER_FROM_NAME'] ?? 'Nova Argentum'))
+            ->from(new Address($_ENV['MAILER_FROM'] ?? 'no-reply@example.com', $_ENV['MAILER_FROM_NAME'] ?? 'Skeleton'))
             ->to(new Address($user->getEmail(), $user->getName() ?? $user->getEmail()))
             ->subject($this->translator->trans('email.disabled.subject'))
             ->htmlTemplate('security/emails/disabled.html.twig')

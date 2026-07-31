@@ -1,8 +1,8 @@
 {
-  "name": "nova-argentum",
+  "name": "symfony-backoffice-skeleton",
   "version": "1.0.0",
   "private": true,
-  "description": "Nova Argentum institutional webpage",
+  "description": "Symfony backoffice skeleton — reusable RBAC, auth, i18n, and CRUD base for downstream projects.",
   "type": "module",
   "scripts": {
     "dev": "vite",

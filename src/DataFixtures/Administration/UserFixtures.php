@@ -11,9 +11,15 @@ use Doctrine\Persistence\ObjectManager;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 
 /**
- * Test user: test@nova-argentum.local / password: test / role: ROLE_ADMIN.
+ * Test user: test@skeleton.local / password: test / role: ROLE_ADMIN.
+ *
  * Safe to load in dev and test; should never be loaded in prod (the
  * fixtures bundle is only registered for dev/test in bundles.php).
+ *
+ * The email uses the skeleton.local domain so downstream projects can
+ * safely re-seed without colliding with production addresses. Override
+ * per-project by editing this fixture or by replacing the user with
+ * the project's own row in /admin/users.
  */
 class UserFixtures extends Fixture
 {
@@ -27,12 +33,12 @@ class UserFixtures extends Fixture
     {
         $repo = $manager->getRepository(User::class);
 
-        if ($repo->findOneBy(['email' => 'test@nova-argentum.local']) !== null) {
+        if ($repo->findOneBy(['email' => 'test@skeleton.local']) !== null) {
             return;
         }
 
         $user = new User();
-        $user->setEmail('test@nova-argentum.local');
+        $user->setEmail('test@skeleton.local');
         $user->setName('Test User');
 
         $hashed = $this->hasher->hashPassword($user, 'test');

@@ -10,16 +10,17 @@ RUN set -eux; \
         git \
         unzip \
         libicu-dev \
-        libpq-dev \
+        default-libmysqlclient-dev \
         libzip-dev \
-        zlib1g-dev; \
+        zlib1g-dev \
+        pkg-config; \
     rm -rf /var/lib/apt/lists/*
 
 RUN set -eux; \
     docker-php-ext-install \
         intl \
         opcache \
-        pdo_pgsql \
+        pdo_mysql \
         zip; \
     pecl install apcu; \
     docker-php-ext-enable apcu
@@ -28,8 +29,8 @@ RUN set -eux; \
     a2enmod rewrite headers; \
     a2dissite 000-default
 
-COPY apache/nova-argentum.conf /etc/apache2/sites-available/nova-argentum.conf
-RUN a2ensite nova-argentum
+COPY apache/skeleton.conf /etc/apache2/sites-available/skeleton.conf
+RUN a2ensite skeleton
 
 COPY docker/php/opcache.ini /usr/local/etc/php/conf.d/zz-opcache.ini
 COPY docker/php/apcu.ini    /usr/local/etc/php/conf.d/apcu.ini

@@ -37,17 +37,19 @@ final class Version20260626000000 extends AbstractMigration
 
         $this->addSql(<<<'SQL'
             CREATE TABLE account_confirmation_token (
-                id BIGSERIAL PRIMARY KEY,
-                user_id INTEGER NOT NULL REFERENCES app_user(id) ON DELETE CASCADE,
+                id BIGINT AUTO_INCREMENT NOT NULL,
+                user_id INT NOT NULL,
                 selector VARCHAR(32) NOT NULL,
                 hashed_token VARCHAR(64) NOT NULL,
-                expires_at TIMESTAMP(0) WITHOUT TIME ZONE NOT NULL,
-                consumed_at TIMESTAMP(0) WITHOUT TIME ZONE DEFAULT NULL,
-                created_at TIMESTAMP(0) WITHOUT TIME ZONE NOT NULL DEFAULT NOW()
+                expires_at DATETIME NOT NULL,
+                consumed_at DATETIME DEFAULT NULL,
+                created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (id)
             )
         SQL);
         $this->addSql("CREATE UNIQUE INDEX uniq_token_selector ON account_confirmation_token (selector)");
         $this->addSql("CREATE INDEX idx_token_user ON account_confirmation_token (user_id)");
+        $this->addSql("ALTER TABLE account_confirmation_token ADD CONSTRAINT fk_token_user FOREIGN KEY (user_id) REFERENCES app_user (id) ON DELETE CASCADE");
 
         $this->addSql("UPDATE app_user SET state = 'USER_STATE_ACTIVE' WHERE password IS NOT NULL AND password <> ''");
     }
