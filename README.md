@@ -18,7 +18,7 @@ without re-applying them by hand.
 **Downstream projects that ship from this skeleton:**
 
 - **Nova Argentum** (`web-nova-argentum`) — adds a public marketing site, a contact form, and cPanel deploy tooling.
-- **SCI Gestión** (`sci_gestion`) — adds catalog and inventory modules for Scachi — Indumentaria Institucional.
+- **SCI Gestión** (`sci_gestion`) — general administration system for a textile company (Scachi — Indumentaria Institucional). Today ships the Catalog and Inventory modules; future modules (production, sales, purchasing, HR, accounting, reporting) will be added on the same architecture.
 
 See `BRANCHING.md` for the rebase workflow that keeps the two projects in sync
 with this skeleton.
@@ -306,9 +306,9 @@ single top-level namespace per type** — `App\Controller\Administration\…`,
 type root (`App\Controller\AbstractCrudController`, `App\Twig\UserAvatarExtension`,
 etc.).
 
-When new business-domain entities (e.g. catalog, inventory, listings) arrive
-in a downstream project, each gets its own module — not a "Business" bucket.
-The module name should match the domain concept.
+When new business-domain entities (e.g. catalog, inventory, production,
+sales, listings) arrive in a downstream project, each gets its own module —
+not a "Business" bucket. The module name should match the domain concept.
 
 ---
 

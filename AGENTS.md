@@ -26,8 +26,16 @@
   create users via `/admin/users/new`, who confirm via email link.
 - Dev test user: `test@skeleton.local` / `test` (`ROLE_ADMIN`,
   `USER_STATE_ACTIVE`).
-- **Two downstream projects** (`web-nova-argentum`, `sci_gestion`) track this
-  skeleton as a git remote and rebase off it. See `BRANCHING.md`.
+- **Two downstream projects** track this skeleton as a git remote and rebase
+  off it:
+  - `web-nova-argentum` — a public marketing site for a land-development
+    business. Adds a public homepage, a contact form, and the cPanel
+    deploy tooling.
+  - `sci_gestion` — a general administration system for a textile company
+    (Scachi — Indumentaria Institucional). Today ships the Catalog and
+    Inventory modules; future modules (production, sales, purchasing, HR,
+    accounting, reporting) will be added on the same architecture.
+  See `BRANCHING.md`.
 
 ---
 
@@ -345,7 +353,7 @@ voter, `getRoles()` still saves you. Either alone is correct.
 See `BRANCHING.md` for the full procedure. The short version:
 
 - The skeleton is the **upstream** of the two downstream projects
-  (`web-nova-argentum`, `sci_gestion`).
+  (`web-nova-argentum` and `sci_gestion`). See above for what each adds.
 - Each downstream registers the skeleton as a remote: `git remote add skeleton
   git@github.com:ortiz-facundo/symfony-backoffice-skeleton.git`.
 - Generic improvements go to the skeleton first, then propagate via
@@ -536,7 +544,7 @@ translations. Missing `es` keys fall back to `en` automatically
 It is reserved for downstream projects that ship a public homepage (e.g.
 `web-nova-argentum` uses `translations/app/`) and is the deliberate
 exception to the per-module convention: marketing copy is shared across
-future public pages and does not belong to a single module.
+the public pages and does not belong to a single module.
 
 #### Adding a new string
 
@@ -922,6 +930,6 @@ the icon map location).
 7. **Does it belong in the skeleton or in a downstream?** If the change
    is generic (RBAC, auth, i18n, CRUD base, deploy tooling), it belongs in
    the skeleton. If it's domain-specific (a public homepage, a contact
-   form, catalog/inventory), it belongs in a downstream. Stop and ask the
-   user if you're unsure.
+   form, catalog, inventory, production, sales, HR, accounting), it
+   belongs in a downstream. Stop and ask the user if you're unsure.
 8. **Do not commit.** Stop, summarize what you did, and let the user commit.

@@ -156,7 +156,8 @@ flavour).
 - **Contact form / mailer.** Downstream projects that need a contact
   form add `ContactController`, `ContactFormType`, `ContactMailer`, and
   a `templates/contact/` directory.
-- **Domain entities** (catalog, inventory, listings, leads, etc.).
+- **Domain entities** (catalog, inventory, production, sales, listings,
+  leads, etc.).
   These are added per downstream project.
 - **Custom markdown / docs renderer.** Only the `README.md`,
   `AGENTS.md`, `BRANCHING.md`, `INFRASTRUCTURE_PLAN.md`, and

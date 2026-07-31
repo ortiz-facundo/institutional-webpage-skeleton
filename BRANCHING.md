@@ -9,7 +9,7 @@
 |---|---|---|
 | Skeleton (upstream) | `symfony-backoffice-skeleton` | Common code: auth, RBAC, i18n, CRUD base, deploy tooling. No public homepage. |
 | Downstream A | `web-nova-argentum` | Adds a public marketing site, a contact form, and the cPanel deploy tooling. |
-| Downstream B | `sci_gestion` | Adds a catalog and inventory modules for Scachi — Indumentaria Institucional. |
+| Downstream B | `sci_gestion` | General administration system for a textile company (Scachi — Indumentaria Institucional). Today ships the Catalog and Inventory modules; future modules will be added on the same architecture. |
 
 The skeleton is the **ancestor** of the two downstreams. Generic improvements
 land in the skeleton first and then propagate to the downstreams. The
@@ -73,7 +73,7 @@ look like:
 
 The 4f9d474 commit is also the fork point. The downstream added 20 commits
 on top: brand scrub, port shift, CI/FTP workflow, cPanel deploy, MariaDB
-parity, and the catalog/inventory domain work. The brand-scrub, port-shift,
+parity, and the catalog and inventory domain work. The brand-scrub, port-shift,
 CI-rename, and migrations-conversion commits drop during the rebase; the
 catalog/inventory, deploy, and MariaDB commits reapply.
 
@@ -185,8 +185,9 @@ Most conflict-driven rebases happen in the auto-generated files:
 - `public/build/assets/*` — never committed; safe to discard.
 - `var/` — never committed; safe to discard.
 - `tailwind.config.js` — domain-specific extensions (Nova Argentum adds
-  brand purple; sci_gestion adds navy). Resolve by keeping the downstream's
-  extensions and re-applying the skeleton's structural changes.
+  brand purple; sci_gestion adds its textile-industry palette). Resolve by
+  keeping the downstream's extensions and re-applying the skeleton's
+  structural changes.
 
 For migration files, the renumbering in the skeleton sometimes collides with
 domain migrations in the downstream. Renumber the skeleton's migration to be
