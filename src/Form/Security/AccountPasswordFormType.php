@@ -41,14 +41,14 @@ final class AccountPasswordFormType extends AbstractType
                 'label' => $this->translator->trans('app.administration.form.security.password.repeat'),
                 'attr'  => ['autocomplete' => 'new-password'],
             ],
-            'invalid_message' => $this->translator->trans('app.security.password.mismatch'),
+            'invalid_message' => $this->translator->trans('app.security.password.mismatch', domain: 'validators'),
             'mapped'          => false,
             'constraints'     => [
-                new Assert\NotBlank(message: $this->translator->trans('app.security.password.required')),
+                new Assert\NotBlank(message: $this->translator->trans('app.security.password.required', domain: 'validators')),
                 new Assert\Length(
                     min: 5,
                     max: 4096,
-                    minMessage: $this->translator->trans('app.security.password.min', ['%limit%' => 5]),
+                    minMessage: $this->translator->trans('app.security.password.min', ['%limit%' => 5], 'validators'),
                 ),
             ],
         ]);

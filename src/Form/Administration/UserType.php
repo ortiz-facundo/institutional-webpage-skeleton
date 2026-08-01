@@ -54,14 +54,14 @@ class UserType extends AbstractType
     {
         $builder
             ->add('email', EmailType::class, [
-                'label' => $this->translator->trans('form.user.email'),
+                'label' => $this->translator->trans('app.administration.form.user.email'),
                 'constraints' => [
                     new Assert\NotBlank(message: $this->translator->trans('app.shared.validators.required')),
                     new Assert\Email(),
                 ],
             ])
             ->add('name', TextType::class, [
-                'label' => $this->translator->trans('form.user.name'),
+                'label' => $this->translator->trans('app.administration.form.user.name'),
                 'required' => false,
                 'constraints' => [new Assert\Length(max: 120)],
             ])
@@ -81,7 +81,7 @@ class UserType extends AbstractType
                 // `$form->get('state')->getData()` to figure out the new
                 // state and dispatches via UserStateTransitionService.
                 'mapped'      => false,
-                'label'       => $this->translator->trans('form.user.state'),
+                'label'       => $this->translator->trans('app.administration.form.user.state'),
                 'expanded'    => false,
                 'constraints' => [
                     new Assert\NotBlank(message: $this->translator->trans('app.shared.validators.required')),
@@ -102,7 +102,7 @@ class UserType extends AbstractType
             'expanded'     => true,
             'mapped'       => false,
             'constraints'  => [new Assert\Count(min: 1, minMessage: $this->translator->trans('app.user.role.min'))],
-            'label'        => $this->translator->trans('form.user.roles'),
+            'label'        => $this->translator->trans('app.administration.form.user.roles'),
         ]);
 
         // Pre-populate the roleEntities field with the entity's current
