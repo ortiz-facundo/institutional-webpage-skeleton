@@ -27,7 +27,7 @@ final class Version20260625001659 extends AbstractMigration
     {
         foreach (Permission::all() as $name) {
             $this->addSql(
-                "INSERT INTO permission (name) VALUES (:name) ON CONFLICT (name) DO NOTHING",
+                "INSERT IGNORE INTO permission (name) VALUES (:name)",
                 ['name' => $name]
             );
         }
