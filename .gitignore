@@ -3,6 +3,10 @@ node_modules/
 .vscode/
 .idea/
 
+# cPanel deploy build artefacts (see scripts/build-cpanel-zip.sh).
+/dist/
+/symfony-backoffice-skeleton-cpanel.zip
+
 ###> symfony/framework-bundle ###
 /.env.local
 /.env.local.php
