@@ -38,11 +38,13 @@ class RoleType extends AbstractType
             ->add('permissions', EntityType::class, [
                 'class'        => Permission::class,
                 'choice_label' => fn (Permission $p) => $this->translator->trans('permission.' . $p->getName() . '.label'),
+                'group_by'     => fn (Permission $p) => Perm::moduleFor($p->getName()) ?? 'other',
                 'choices'      => $this->loadPermissionChoices(),
                 'multiple'     => true,
                 'expanded'     => true,
                 'by_reference' => false,
                 'label'        => $this->translator->trans('app.administration.form.role.permissions'),
+                'block_prefix' => 'permission_picker',
                 'constraints'  => [new Assert\Count(min: 1, minMessage: $this->translator->trans('app.role.permission.min'))],
             ]);
     }

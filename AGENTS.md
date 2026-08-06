@@ -299,12 +299,21 @@ Test user (dev fixtures, after running the first-time seed):
 ```
 
 - **Permission catalog** is hardcoded in `App\Security\Permission` as
-  `public const string PERMISSION_*`. The current 5 are:
-  - `PERMISSION_VIEW_BACKOFFICE`
-  - `PERMISSION_MANAGE_USERS`
-  - `PERMISSION_MANAGE_ROLES`
-  - `PERMISSION_MANAGE_PERMISSIONS`
-  - `PERMISSION_IMPERSONATE_USERS` — see "Impersonation" below
+  `public const string PERMISSION_*`, grouped by owning **module** in
+  `Permission::groups()` (`backoffice`, `administration` today; downstreams
+  add their own). The current 5 are:
+  - `backoffice`: `PERMISSION_VIEW_BACKOFFICE`
+  - `administration`: `PERMISSION_MANAGE_USERS`,
+    `PERMISSION_MANAGE_ROLES`, `PERMISSION_MANAGE_PERMISSIONS`,
+    `PERMISSION_IMPERSONATE_USERS` — see "Impersonation" below
+
+The module grouping is **presentation metadata only** (the role permission
+picker and the read-only catalog page render checkboxes/rows under one
+`<fieldset>` per module). It does not change authorization — the voter
+still matches by the literal `PERMISSION_*` string. Group keys are
+declared in `Permission::groups()`; the group label is read from the
+`permission_group.<key>.label` translation key. Group order in the
+catalog equals declaration order.
 - **Roles** are rows in the `role` table. Baseline fixtures seed `ROLE_ADMIN`
   (all 5 perms) and `ROLE_USER` (view only).
 - **Users** carry roles via the `user_role` join table. New users get
@@ -337,7 +346,9 @@ voter, `getRoles()` still saves you. Either alone is correct.
 
 ### Adding a new permission
 
-1. `src/Security/Permission.php`: append a constant + add to `all()`.
+1. `src/Security/Permission.php`: append a constant + add to the right
+   group in `groups()`. Add a new group key if the permission belongs to
+   a new module (downstreams typically add `catalog`, `inventory`, etc.).
 2. Generate a new migration (it must call `Permission::all()` and INSERT
    the new constant name with `ON CONFLICT DO NOTHING`).
 3. Re-run migrations in any environment that needs it.
@@ -345,6 +356,9 @@ voter, `getRoles()` still saves you. Either alone is correct.
    `ROLE_ADMIN` automatically (the fixtures' `syncPermissions()` is
    idempotent for permission grants).
 5. Optionally assign the permission to other roles via the backoffice.
+6. Add `permission_group.<group>.label` to both translation locales
+   (`translations/security/messages.<locale>.yaml`) when introducing a
+   new module group.
 
 ---
 
@@ -556,12 +570,20 @@ the public pages and does not belong to a single module.
 
 #### Adding a new permission
 
-1. Append the constant + entry in `App\Security\Permission::all()`.
+1. Append the constant + add to the right group in
+   `App\Security\Permission::groups()`. Add a new group key if the
+   permission belongs to a new module.
 2. Add a `permission.<NAME>.label` and `permission.<NAME>.description`
    key to `translations/security/messages.<locale>.yaml` (both locales).
+   The role form's info-icon tooltip and the permission catalog both
+   read from those keys.
 3. The role/permission admin form (`RoleType::permissions` and the
    permission catalog page) reads from those keys via the
    `permission.<NAME>.label` lookup.
+4. When you introduce a new module group, also add a
+   `permission_group.<group>.label` key in both locales — the grouped
+   fieldset legend in the role form and the row-group header in the
+   catalog page render from it.
 
 #### Locale switcher
 
@@ -618,12 +640,22 @@ blocks to add Tailwind utility classes to the standard Symfony form
 widgets. To add a new widget type, add a block override in this file
 using the existing patterns (`form_label`, `form_widget_simple`,
 `choice_widget_expanded`, `checkbox_widget`, `textarea_widget`,
-`form_row`, `form_errors`, `form_label_content`).
+`form_row`, `form_errors`, `form_label_content`,
+`permission_picker_widget`).
 
 **Important gotcha:** the default `form_div_layout.html.twig` does NOT
 define a `text_widget` block. Text-like inputs (text, email, password,
 tel, url, search, number, etc.) all go through `form_widget_simple`.
 Override that block to restyle all of them in one go.
+
+**Permission picker (`permission_picker_widget`):** the role form's
+permission checkboxes render through this block. It groups choices by
+the permission's module (from `Permission::groups()`), renders a
+`<fieldset><legend>` per group, and pairs each checkbox with a
+focusable info button whose tooltip exposes the permission description
+on hover and focus. The block is field-specific — it is only invoked
+when the form field declares `block_prefix: 'permission_picker'`
+(see `App\Form\Administration\RoleType`).
 
 ---
 

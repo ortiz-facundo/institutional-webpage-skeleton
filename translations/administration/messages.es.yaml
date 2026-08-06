@@ -48,6 +48,7 @@ app:
                 perm_count: 'N.º de permisos'
             permission:
                 name: 'Nombre'
+                label: 'Etiqueta'
                 roles_using_it: 'Roles que lo usan'
                 description: 'Descripción'
         flash:
@@ -99,6 +100,7 @@ app:
             role:
                 name: 'Nombre del rol (ej. ROLE_EDITOR)'
                 permissions: 'Permisos'
+                permission_info_aria: 'Mostrar descripción de %name%'
             account:
                 password:
                     current: 'Contraseña actual'

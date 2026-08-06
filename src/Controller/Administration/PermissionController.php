@@ -28,8 +28,29 @@ final class PermissionController extends AbstractController
     {
         $items = $this->permissions->findBy([], ['id' => 'ASC']);
 
+        $byName = [];
+        foreach ($items as $p) {
+            $byName[$p->getName()] = $p;
+        }
+
+        $groups = [];
+        foreach (Perm::groups() as $module => $names) {
+            $group = [];
+            foreach ($names as $name) {
+                if (isset($byName[$name])) {
+                    $group[] = $byName[$name];
+                    unset($byName[$name]);
+                }
+            }
+            $groups[$module] = $group;
+        }
+        if ($byName !== []) {
+            $groups['other'] = array_values($byName);
+        }
+
         return $this->render('administration/permission/list.html.twig', [
-            'items'  => $items,
+            'groups' => $groups,
+            'total'  => count($items),
             'title'  => $this->translator->trans('app.administration.permission.list_title'),
             'trail'  => [
                 ['label' => $this->translator->trans('app.administration.crud.breadcrumbs.dashboard'), 'path' => 'backoffice_dashboard'],

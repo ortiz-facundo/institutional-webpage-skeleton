@@ -69,6 +69,7 @@ app:
                 perm_count: '# perms'
             permission:
                 name: 'Name'
+                label: 'Label'
                 roles_using_it: 'Roles using it'
                 description: 'Description'
         # Success flashes (mirrors the keys that AbstractCrudController +
@@ -127,6 +128,7 @@ app:
             role:
                 name: 'Role name (e.g. ROLE_EDITOR)'
                 permissions: 'Permissions'
+                permission_info_aria: 'Show description for %name%'
             account:
                 password:
                     current: 'Current password'

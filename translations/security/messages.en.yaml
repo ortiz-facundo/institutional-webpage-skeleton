@@ -66,16 +66,17 @@ invalid_link:
     contact_admin: 'Please contact the administrator who created your account and ask them to send a new invitation.'
 
 # ── Permission catalog (label + description per PERMISSION_*) ────────
-# Used by RoleType::permissions' choice_label closure and by the
-# permission catalog page. The keys MUST be the exact PERMISSION_*
-# constant names (App\Security\Permission::all()).
+# Used by RoleType::permissions' choice_label closure, the info-icon
+# tooltip in the role form, and the permission catalog page. The keys
+# MUST be the exact PERMISSION_* constant names
+# (App\Security\Permission::groups()).
 permission:
     PERMISSION_VIEW_BACKOFFICE:
         label: 'View backoffice'
         description: 'Access the backoffice dashboard. Without this permission the user cannot reach /dashboard.'
     PERMISSION_MANAGE_USERS:
         label: 'Manage users'
-        description: 'Create, edit, disable, and delete user accounts; re-send confirmation emails; impersonate.'
+        description: 'Create, edit, disable, and delete user accounts; re-send confirmation emails.'
     PERMISSION_MANAGE_ROLES:
         label: 'Manage roles'
         description: 'Create, edit, and delete roles and their permission grants.'
@@ -85,3 +86,14 @@ permission:
     PERMISSION_IMPERSONATE_USERS:
         label: 'Impersonate users'
         description: 'Log in as another user for support purposes. Audit-logged; cannot be used admin-to-admin.'
+
+# ── Permission module groups (used by the catalog page and the role
+# form's grouped permission picker). Add a key here whenever you add a
+# module to App\Security\Permission::groups().
+permission_group:
+    backoffice:
+        label: 'Backoffice'
+    administration:
+        label: 'Administration'
+    other:
+        label: 'Other'

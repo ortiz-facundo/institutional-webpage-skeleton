@@ -60,7 +60,7 @@ permission:
         description: 'Acceder al panel de administración. Sin este permiso el usuario no puede llegar a /dashboard.'
     PERMISSION_MANAGE_USERS:
         label: 'Administrar usuarios'
-        description: 'Crear, editar, deshabilitar y eliminar cuentas de usuario; reenviar correos de confirmación; impersonar.'
+        description: 'Crear, editar, deshabilitar y eliminar cuentas de usuario; reenviar correos de confirmación.'
     PERMISSION_MANAGE_ROLES:
         label: 'Administrar roles'
         description: 'Crear, editar y eliminar roles y sus asignaciones de permisos.'
@@ -70,3 +70,15 @@ permission:
     PERMISSION_IMPERSONATE_USERS:
         label: 'Suplantar usuarios'
         description: 'Iniciar sesión como otro usuario para soporte. Queda registrado en auditoría; no se permite entre administradores.'
+
+# ── Módulos del catálogo de permisos (usados por la página del
+# catálogo y por el selector agrupado de permisos en el formulario de
+# rol). Añade una clave aquí cada vez que añadas un módulo a
+# App\Security\Permission::groups().
+permission_group:
+    backoffice:
+        label: 'Panel'
+    administration:
+        label: 'Administración'
+    other:
+        label: 'Otros'
