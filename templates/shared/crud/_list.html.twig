@@ -58,7 +58,7 @@
                     {% for col in columns %}
                         <th scope="col" class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-stone-500">{{ col.label }}</th>
                     {% endfor %}
-                    {% if show_actions|default(true) %}
+                    {% if show_actions ?? true %}
                         <th scope="col" class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-stone-500">{{ 'app.administration.crud.actions_label'|trans }}</th>
                     {% endif %}
                 </tr>
@@ -86,7 +86,7 @@
                                 {% endif %}
                             </td>
                         {% endfor %}
-                        {% if show_actions|default(true) %}
+                        {% if show_actions ?? true %}
                             <td class="px-4 py-3 text-right text-sm font-medium">
                                 {% block crud_list_actions %}
                                     {% include 'shared/crud/_row_actions.html.twig' with {
