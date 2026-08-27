@@ -76,9 +76,11 @@ permission:
 # rol). Añade una clave aquí cada vez que añadas un módulo a
 # App\Security\Permission::groups().
 permission_group:
+    admin:
+        label: 'Administración'
+    administration:
+        label: 'Gestión de usuarios y roles'
     backoffice:
         label: 'Panel'
-    administration:
-        label: 'Administración'
     other:
         label: 'Otros'

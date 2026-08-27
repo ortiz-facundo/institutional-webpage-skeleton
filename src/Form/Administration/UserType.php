@@ -7,6 +7,7 @@ namespace App\Form\Administration;
 use App\Entity\Administration\Role;
 use App\Entity\Administration\User;
 use App\Repository\Administration\RoleRepository;
+use App\Validator\Constraints\OnlyAdminCanGrantAdminRole;
 use Symfony\Bridge\Doctrine\Form\Type\EntityType;
 use Symfony\Component\Form\AbstractType;
 use Symfony\Component\Form\Extension\Core\Type\ChoiceType;
@@ -33,9 +34,17 @@ use Symfony\Contracts\Translation\TranslatorInterface;
  *    all three values are selectable; the state-change side effects
  *    (audit, email, token rotation) are handled in the controller via
  *    UserStateTransitionService.
- *  - roleEntities is `mapped: false` and diffed in POST_SUBMIT to
- *    sidestep the Doctrine+EntityType data-mapper bug (see the form
- *    commit history for the long explanation).
+ *  - roleEntities is `mapped: false`. Two non-event patterns bridge the
+ *    entity and the form:
+ *      * preBindForm() (controller hook) populates it from the entity's
+ *        current roles before the request is bound.
+ *      * onFormSubmit() (controller hook) diffs the chosen roles back
+ *        to the entity after a successful submit.
+ *    This replaces the old POST_SET_DATA / POST_SUBMIT event listeners
+ *    — the policy is now enforced declaratively via the
+ *    OnlyAdminCanGrantAdminRole Constraint attached below, which runs
+ *    during $form->isValid() and rejects the submission with an inline
+ *    error on any disallowed checkbox.
  *
  *  All visible labels, helps, and constraint messages are translated
  *  through the `messages` / `validators` domains. See
@@ -101,55 +110,12 @@ class UserType extends AbstractType
             'multiple'     => true,
             'expanded'     => true,
             'mapped'       => false,
-            'constraints'  => [new Assert\Count(min: 1, minMessage: $this->translator->trans('app.user.role.min'))],
+            'constraints'  => [
+                new Assert\Count(min: 1, minMessage: $this->translator->trans('app.user.role.min')),
+                new OnlyAdminCanGrantAdminRole(),
+            ],
             'label'        => $this->translator->trans('app.administration.form.user.roles'),
         ]);
-
-        // Pre-populate the roleEntities field with the entity's current
-        // roles. POST_SET_DATA runs AFTER the form has propagated its data
-        // to its children — so `mapped: false` children, which the propagation
-        // sets to `null`, are still recoverable here.
-        $builder->addEventListener(
-            \Symfony\Component\Form\FormEvents::POST_SET_DATA,
-            function (\Symfony\Component\Form\FormEvent $event) {
-                $user = $event->getData();
-                if ($user instanceof User && $user->getId() !== null) {
-                    $event->getForm()->get('roleEntities')->setData($user->getRoleEntities()->toArray());
-                }
-            }
-        );
-
-        // Apply the chosen roles to the entity after the form is fully
-        // bound. We do this in POST_SUBMIT so the form's own data mapper
-        // never touches the User::$roles relation. See the class docblock
-        // for the rationale.
-        $builder->addEventListener(
-            \Symfony\Component\Form\FormEvents::POST_SUBMIT,
-            function (\Symfony\Component\Form\FormEvent $event) {
-                $form = $event->getForm();
-                $user = $form->getData();
-                if (!$user instanceof User) {
-                    return;
-                }
-                /** @var list<Role> $chosen */
-                $chosen = $form->get('roleEntities')->getData() ?? [];
-                $current = $user->getRoleEntities();
-                $chosenIds = [];
-                foreach ($chosen as $r) {
-                    $chosenIds[$r->getId()] = true;
-                }
-                foreach ($current as $existing) {
-                    if (!isset($chosenIds[$existing->getId()])) {
-                        $user->removeRole($existing);
-                    }
-                }
-                foreach ($chosen as $role) {
-                    if (!$current->contains($role)) {
-                        $user->addRole($role);
-                    }
-                }
-            }
-        );
     }
 
     public function configureOptions(OptionsResolver $resolver): void

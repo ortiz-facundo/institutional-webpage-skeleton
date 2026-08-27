@@ -19,19 +19,29 @@ final class Permission
      * constant; `all()` flattens this in declaration order. Add a
      * `permission_group.<group>.label` translation key for the new group.
      *
+     * The `admin` group is the privileged tier: anyone holding any of
+     * its permissions is treated as an admin actor by
+     * {@see Role::isAdmin()} / {@see AdminPolicy::isAdmin()} (used to
+     * deny admin-to-admin impersonation and hide the impersonate
+     * button). The `administration` group below is manager-tier:
+     * roles that may manage users/roles/permissions but aren't
+     * themselves privileged enough to be exempt from impersonation.
+     *
      * @return array<string, list<string>>
      */
     public static function groups(): array
     {
         return [
-            'backoffice' => [
-                self::PERMISSION_VIEW_BACKOFFICE,
+            'admin' => [
+                self::PERMISSION_IMPERSONATE_USERS,
             ],
             'administration' => [
                 self::PERMISSION_MANAGE_USERS,
                 self::PERMISSION_MANAGE_ROLES,
                 self::PERMISSION_MANAGE_PERMISSIONS,
-                self::PERMISSION_IMPERSONATE_USERS,
+            ],
+            'backoffice' => [
+                self::PERMISSION_VIEW_BACKOFFICE,
             ],
         ];
     }
@@ -61,6 +71,30 @@ final class Permission
     public static function isValid(string $name): bool
     {
         return in_array($name, self::all(), true);
+    }
+
+    /**
+     * The set of permissions that mark a role or actor as
+     * "administrative" — see {@see Role::isAdmin()} / {@see AdminPolicy}.
+     * Intentionally NOT derived from a `PERMISSION_MANAGE_*` name
+     * prefix: a downstream project's catalog can reuse `MANAGE_*` for
+     * non-admin verbs (e.g. `PERMISSION_MANAGE_MY_LEADS` for a seller
+     * role), which a prefix check would misclassify as admin. Adding a
+     * new admin-tier permission: append it here AND to the `admin`
+     * group in groups() above.
+     *
+     * @return list<string>
+     */
+    public static function adminPermissions(): array
+    {
+        return [
+            self::PERMISSION_IMPERSONATE_USERS,
+        ];
+    }
+
+    public static function isAdminPermission(string $name): bool
+    {
+        return in_array($name, self::adminPermissions(), true);
     }
 
     public static function moduleFor(string $name): ?string

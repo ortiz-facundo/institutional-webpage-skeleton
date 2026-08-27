@@ -57,6 +57,7 @@ app:
                 view: '%display%'
             new_button: 'New %entity%'
             empty: 'No %entity_plural% yet. Create the first one to get started.'
+            delete_blocked_generic: 'Cannot delete %entity% — it still has related records.'
         # Entity-specific list column labels (kept here so each entity
         # can override without touching the partial).
         columns:
@@ -107,11 +108,21 @@ app:
             state_help: 'Pending: created, awaiting confirmation. Active: password set, can log in. Disabled: blocked by an admin.'
             not_found: 'User not found.'
             invalid_csrf: 'Invalid CSRF token.'
+            # Inline error raised by OnlyAdminCanGrantAdminRole when a
+            # non-admin actor tries to assign an admin role (e.g. ROLE_ADMIN).
+            # Only admins can grant admin roles.
+            role_admin_only: 'You cannot assign the role %role% because it grants admin permissions. Only an admin can grant admin roles.'
         # Role entity.
         role:
             list_title: 'Roles'
             not_found: 'Role not found.'
             invalid_csrf: 'Invalid CSRF token.'
+            delete_blocked: '{1} Cannot delete this role — it is still assigned to 1 user.|[2,Inf] Cannot delete this role — it is still assigned to %count% users.'
+            # Inline error raised by OnlyAdminCanGrantAdminPermission when a
+            # non-admin actor tries to attach an admin permission (e.g.
+            # PERMISSION_IMPERSONATE_USERS) to a role. Only admins can
+            # grant admin permissions.
+            permission_admin_only: 'You cannot grant the permission %permission% because it is an admin permission. Only an admin can grant admin permissions.'
         # Permission entity (the catalog is read-only).
         permission:
             list_title: 'Permissions'

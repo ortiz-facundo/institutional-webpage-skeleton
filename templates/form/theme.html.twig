@@ -73,9 +73,16 @@
 {% block choice_widget_expanded %}
     <div {{ block('widget_container_attributes') }}>
         {% for child in form %}
-            <label class="flex items-center gap-2 text-sm text-stone-800">
-                {{ form_widget(child, {attr: {class: 'h-4 w-4 rounded border-stone-300 text-amber-700 focus:ring-amber-600'}}) }}
-                {{ form_label(child, null, {translation_domain: choice_translation_domain}) }}
+            <label class="flex items-start gap-2 text-sm text-stone-800">
+                <span class="flex items-center gap-2">
+                    {{ form_widget(child, {attr: {class: 'h-4 w-4 rounded border-stone-300 text-amber-700 focus:ring-amber-600'}}) }}
+                    {{ form_label(child, null, {translation_domain: choice_translation_domain}) }}
+                </span>
+                {# Per-choice error (rendered inline below the label).
+                   This is what surfaces messages from Constraint
+                   validators like OnlyAdminCanGrantAdminRole that use
+                   atPath('[id]') on a specific checkbox. #}
+                {{ form_errors(child) }}
             </label>
         {% endfor %}
     </div>
@@ -159,6 +166,11 @@
                                     {{ description }}
                                 </span>
                             </div>
+                            {# Per-choice error (e.g. from the
+                               OnlyAdminCanGrantAdminPermission constraint,
+                               which uses atPath('[id]') on this specific
+                               checkbox). #}
+                            {{ form_errors(child) }}
                         {% endif %}
                     {% endfor %}
                 </div>

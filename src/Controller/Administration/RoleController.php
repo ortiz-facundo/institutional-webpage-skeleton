@@ -86,4 +86,24 @@ final class RoleController extends AbstractCrudController
     {
         return new Role('');
     }
+
+    /**
+     * The `user_role` join table's FK is ON DELETE CASCADE, so without
+     * this guard deleting a Role that's still assigned to Users would
+     * silently strip it from every one of them. Block instead and tell
+     * the admin to unassign it first.
+     */
+    protected function getDeleteBlockedReason(object $entity): ?string
+    {
+        \assert($entity instanceof Role);
+
+        $count = $entity->getUsers()->count();
+        if ($count > 0) {
+            return $this->translator->trans('app.administration.role.delete_blocked', [
+                '%count%' => $count,
+            ]);
+        }
+
+        return null;
+    }
 }

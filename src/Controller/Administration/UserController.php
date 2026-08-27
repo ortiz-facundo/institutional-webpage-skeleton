@@ -8,6 +8,7 @@ use App\Controller\AbstractCrudController;
 use App\Entity\Administration\User;
 use App\Form\Administration\UserType;
 use App\Repository\Administration\UserRepository;
+use App\Security\AdminPolicy;
 use App\Security\Permission as Perm;
 use App\Service\Security\UserLifecycle\UserStateTransitionService;
 use Doctrine\ORM\EntityManagerInterface;
@@ -109,11 +110,31 @@ final class UserController extends AbstractCrudController
     }
 
     /**
-     * Called by AbstractCrudController::edit() before flush. If the
-     * state changed we go through the lifecycle service (so audit,
-     * email-notifier, token invalidation, etc. fire). Email changes
-     * for Pending users trigger a resend of the confirmation link to
-     * the new address.
+     * Replaces UserType's old POST_SET_DATA listener. The
+     * `roleEntities` field is `mapped: false`, so the form's data
+     * mapper never reads from User::$roles. We populate it here,
+     * before the request is bound, so the checkboxes reflect the
+     * entity's current role set on GET and on any re-render after a
+     * validation failure.
+     */
+    protected function preBindForm(FormInterface $form, object $entity): void
+    {
+        if (!$entity instanceof User || !$form->has('roleEntities')) {
+            return;
+        }
+        $form->get('roleEntities')->setData($entity->getRoleEntities()->toArray());
+    }
+
+    /**
+     * Called by AbstractCrudController after a successful form submit
+     * (the parent already verified `$form->isValid()`).
+     *
+     * Replaces UserType's old POST_SUBMIT listener: `roleEntities` is
+     * `mapped: false`, so we diff the chosen roles back to the
+     * entity's role collection here. Also handles the state field
+     * (which is unmapped for the same Doctrine+EntityType reason) by
+     * routing through the lifecycle service so audit + email +
+     * token-rotation fire.
      *
      * @param bool $isCreate true on `new()`, false on `edit()`
      */
@@ -121,6 +142,25 @@ final class UserController extends AbstractCrudController
     {
         if (!$entity instanceof User) {
             return;
+        }
+
+        // roleEntities diff → entity (replaces the old POST_SUBMIT listener).
+        /** @var list<\App\Entity\Administration\Role> $chosen */
+        $chosen = $form->get('roleEntities')->getData() ?? [];
+        $current = $entity->getRoleEntities();
+        $chosenIds = [];
+        foreach ($chosen as $r) {
+            $chosenIds[$r->getId()] = true;
+        }
+        foreach ($current as $existing) {
+            if (!isset($chosenIds[$existing->getId()])) {
+                $entity->removeRole($existing);
+            }
+        }
+        foreach ($chosen as $role) {
+            if (!$current->contains($role)) {
+                $entity->addRole($role);
+            }
         }
 
         if ($isCreate) {
@@ -186,12 +226,7 @@ final class UserController extends AbstractCrudController
     #[Route('/{id}/resend-confirmation', name: 'resend_confirmation', methods: ['POST'], requirements: ['id' => '\d+'])]
     public function resendConfirmation(int $id, Request $request): Response
     {
-        $token = $request->request->get('_token');
-        if (!$this->isCsrfTokenValid('resend_confirmation' . $id, $token)) {
-            throw new \Symfony\Component\Security\Core\Exception\AccessDeniedException(
-                $this->translator->trans('app.administration.user.invalid_csrf')
-            );
-        }
+        $this->assertValidCsrfToken($request, 'resend_confirmation' . $id);
 
         $user = $this->users->find($id);
         if ($user === null) {
@@ -239,12 +274,8 @@ final class UserController extends AbstractCrudController
             return true;
         }
 
-        foreach ($entity->getRoleEntities() as $role) {
-            foreach ($role->getPermissions() as $perm) {
-                if (str_starts_with($perm->getName(), 'PERMISSION_MANAGE_')) {
-                    return true;
-                }
-            }
+        if (AdminPolicy::isAdmin($entity)) {
+            return true;
         }
 
         // Only Active users are valid impersonation targets.

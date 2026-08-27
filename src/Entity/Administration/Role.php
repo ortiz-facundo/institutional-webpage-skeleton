@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Entity\Administration;
 
 use App\Repository\Administration\RoleRepository;
+use App\Security\Permission as SecurityPermission;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
@@ -77,5 +78,21 @@ class Role
     public function getUsers(): Collection
     {
         return $this->users;
+    }
+
+    /**
+     * Whether this role grants any "admin" permission (per
+     * {@see SecurityPermission::adminPermissions()}). Used to deny
+     * admin-to-admin impersonation and to hide the impersonate button
+     * on admin rows — see {@see \App\Security\AdminPolicy}.
+     */
+    public function isAdmin(): bool
+    {
+        foreach ($this->permissions as $permission) {
+            if (SecurityPermission::isAdminPermission($permission->getName())) {
+                return true;
+            }
+        }
+        return false;
     }
 }

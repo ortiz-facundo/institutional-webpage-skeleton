@@ -6,6 +6,8 @@ namespace App\Controller\Administration;
 
 use App\Entity\Administration\User;
 use App\Repository\Administration\UserRepository;
+use App\Security\AdminPolicy;
+use App\Security\CsrfProtectedActionTrait;
 use App\Security\Permission as Perm;
 use Psr\Log\LoggerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -44,6 +46,8 @@ use Symfony\Contracts\Translation\TranslatorInterface;
 #[Route('/admin', name: 'administration_user_')]
 final class ImpersonateController extends AbstractController
 {
+    use CsrfProtectedActionTrait;
+
     public function __construct(
         private readonly UserRepository $users,
         private readonly TokenStorageInterface $tokenStorage,
@@ -56,12 +60,7 @@ final class ImpersonateController extends AbstractController
     #[IsGranted(Perm::PERMISSION_IMPERSONATE_USERS)]
     public function impersonate(int $id, Request $request): Response
     {
-        $token = $request->request->get('_token');
-        if (!$this->isCsrfTokenValid('impersonate' . $id, $token)) {
-            throw new AccessDeniedException(
-                $this->translator->trans('app.administration.user.invalid_csrf')
-            );
-        }
+        $this->assertValidCsrfToken($request, 'impersonate' . $id);
 
         /** @var User|null $admin */
         $admin = $this->getUser();
@@ -102,7 +101,7 @@ final class ImpersonateController extends AbstractController
         // Guard: admins cannot impersonate other admins. The original admin
         // could already do everything the target admin can do; the only
         // effect of admin→admin impersonation is to muddy the audit trail.
-        if ($this->targetIsAdmin($target)) {
+        if (AdminPolicy::isAdmin($target)) {
             $this->auditLogger->warning('impersonation.blocked.target_is_admin', [
                 'actor_id'     => $admin?->getId(),
                 'actor_email'  => $admin?->getEmail(),
@@ -143,12 +142,7 @@ final class ImpersonateController extends AbstractController
             );
         }
 
-        $token = $request->request->get('_token');
-        if (!$this->isCsrfTokenValid('exit_impersonation', $token)) {
-            throw new AccessDeniedException(
-                $this->translator->trans('app.administration.user.invalid_csrf')
-            );
-        }
+        $this->assertValidCsrfToken($request, 'exit_impersonation');
 
         // Capture who was being impersonated before we drop the SwitchUserToken.
         $impersonated = $current->getUser();
@@ -163,23 +157,5 @@ final class ImpersonateController extends AbstractController
         ]);
 
         return $this->redirect('/dashboard?_switch_user=' . SwitchUserListener::EXIT_VALUE);
-    }
-
-    /**
-     * A user is considered "an admin" if any of their roles grants at
-     * least one PERMISSION_MANAGE_* permission. We use this to deny
-     * admin-to-admin impersonation — there's no legitimate support reason
-     * to swap between two admins; the audit trail becomes unreadable.
-     */
-    private function targetIsAdmin(User $target): bool
-    {
-        foreach ($target->getRoleEntities() as $role) {
-            foreach ($role->getPermissions() as $perm) {
-                if (str_starts_with($perm->getName(), 'PERMISSION_MANAGE_')) {
-                    return true;
-                }
-            }
-        }
-        return false;
     }
 }

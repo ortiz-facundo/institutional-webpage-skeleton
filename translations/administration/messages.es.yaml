@@ -38,6 +38,7 @@ app:
                 edit: 'Editar %display%'
                 view: '%display%'
             new_button: 'Nuevo %entity%'
+            delete_blocked_generic: 'No se puede eliminar %entity%: todavía tiene registros relacionados.'
         columns:
             user:
                 email: 'Correo electrónico'
@@ -81,10 +82,21 @@ app:
             state_help: 'Pendiente: creada, esperando confirmación. Activo: contraseña definida, puede iniciar sesión. Deshabilitado: bloqueada por un administrador.'
             not_found: 'Usuario no encontrado.'
             invalid_csrf: 'Token CSRF no válido.'
+            # Error inline lanzado por OnlyAdminCanGrantAdminRole cuando
+            # un actor no administrador intenta asignar un rol con permisos
+            # de administrador (p. ej. ROLE_ADMIN). Solo los administradores
+            # pueden asignar roles con permisos administrativos.
+            role_admin_only: 'No puedes asignar el rol %role% porque otorga permisos de administrador. Solo un administrador puede asignar roles con permisos administrativos.'
         role:
             list_title: 'Roles'
             not_found: 'Rol no encontrado.'
             invalid_csrf: 'Token CSRF no válido.'
+            delete_blocked: '{1} No se puede eliminar este rol: todavía está asignado a 1 usuario.|[2,Inf] No se puede eliminar este rol: todavía está asignado a %count% usuarios.'
+            # Error inline lanzado por OnlyAdminCanGrantAdminPermission cuando
+            # un actor no administrador intenta añadir un permiso de
+            # administrador (p. ej. PERMISSION_IMPERSONATE_USERS) a un rol.
+            # Solo los administradores pueden otorgar permisos administrativos.
+            permission_admin_only: 'No puedes otorgar el permiso %permission% porque es un permiso de administrador. Solo un administrador puede otorgar permisos administrativos.'
         permission:
             list_title: 'Permisos'
             empty: 'Aún no hay permisos en el catálogo.'

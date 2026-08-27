@@ -4,13 +4,14 @@ declare(strict_types=1);
 
 namespace App\Controller;
 
+use App\Security\CsrfProtectedActionTrait;
+use Doctrine\DBAL\Exception\ForeignKeyConstraintViolationException;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\Form\FormInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
-use Symfony\Component\Security\Core\Exception\AccessDeniedException;
 use Symfony\Contracts\Translation\TranslatorInterface;
 use App\Security\Permission as Perm;
 
@@ -35,6 +36,8 @@ use App\Security\Permission as Perm;
  */
 abstract class AbstractCrudController extends AbstractController
 {
+    use CsrfProtectedActionTrait;
+
     public function __construct(
         protected readonly EntityManagerInterface $em,
         protected readonly TranslatorInterface $translator,
@@ -106,6 +109,17 @@ abstract class AbstractCrudController extends AbstractController
     }
 
     /**
+     * Hook called after the form is created and bound to the entity,
+     * BEFORE `$form->handleRequest($request)`. Subclasses use this to
+     * pre-populate `mapped: false` fields from the entity (the
+     * non-event replacement for the legacy `POST_SET_DATA` listener
+     * pattern). Default is a no-op.
+     */
+    protected function preBindForm(FormInterface $form, object $entity): void
+    {
+    }
+
+    /**
      * Hook called after a successful create (after `em->persist` +
      * `em->flush`). Use this for side-effects that require a database
      * id — token rotation, file uploads, audit-log entries that record
@@ -173,6 +187,21 @@ abstract class AbstractCrudController extends AbstractController
     protected function shouldHideResend(object $entity): bool
     {
         return false;
+    }
+
+    /**
+     * Hook for subclasses to block deletion of an entity that still has
+     * dependent records the deletion would silently affect (e.g. a Role
+     * still assigned to Users — the `user_role` FK is ON DELETE CASCADE,
+     * so without this check deleting the Role would silently strip it
+     * from every user who had it, with no warning). Default: never
+     * blocked. Return a translated message to block; the delete() action
+     * shows it as an error flash and redirects back to the list instead
+     * of removing the entity.
+     */
+    protected function getDeleteBlockedReason(object $entity): ?string
+    {
+        return null;
     }
 
     /**
@@ -299,6 +328,7 @@ abstract class AbstractCrudController extends AbstractController
 
         $entity = $this->newEntity();
         $form = $this->createForm($this->getFormType(), $entity, $this->getFormOptions(true));
+        $this->preBindForm($form, $entity);
         $form->handleRequest($request);
 
         if ($form->isSubmitted() && $form->isValid()) {
@@ -347,6 +377,7 @@ abstract class AbstractCrudController extends AbstractController
         }
 
         $form = $this->createForm($this->getFormType(), $entity, $this->getFormOptions(false));
+        $this->preBindForm($form, $entity);
         $form->handleRequest($request);
 
         if ($form->isSubmitted() && $form->isValid()) {
@@ -407,13 +438,7 @@ abstract class AbstractCrudController extends AbstractController
     public function delete(int $id, Request $request): Response
     {
         $this->denyAccessUnlessGranted($this->getRequiredPermission());
-
-        $token = $request->request->get('_token');
-        if (!$this->isCsrfTokenValid('delete' . $id, $token)) {
-            throw new AccessDeniedException(
-                $this->translator->trans('app.shared.errors.invalid_csrf')
-            );
-        }
+        $this->assertValidCsrfToken($request, 'delete' . $id);
 
         $entity = $this->findEntity($id);
         if ($entity === null) {
@@ -422,8 +447,22 @@ abstract class AbstractCrudController extends AbstractController
             );
         }
 
-        $this->em->remove($entity);
-        $this->em->flush();
+        $blockedReason = $this->getDeleteBlockedReason($entity);
+        if ($blockedReason !== null) {
+            $this->addFlash('error', $blockedReason);
+            return $this->redirectToRoute($this->getRoutePrefix() . '_list');
+        }
+
+        try {
+            $this->em->remove($entity);
+            $this->em->flush();
+        } catch (ForeignKeyConstraintViolationException) {
+            $this->addFlash('error', $this->translator->trans('app.administration.crud.delete_blocked_generic', [
+                '%entity%' => $this->getEntityLabel(),
+            ]));
+            return $this->redirectToRoute($this->getRoutePrefix() . '_list');
+        }
+
         $this->addFlash('success', $this->translator->trans('app.administration.flash.deleted', [
             '%entity%' => $this->getEntityLabel(),
         ]));

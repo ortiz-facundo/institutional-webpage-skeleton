@@ -91,9 +91,11 @@ permission:
 # form's grouped permission picker). Add a key here whenever you add a
 # module to App\Security\Permission::groups().
 permission_group:
-    backoffice:
-        label: 'Backoffice'
+    admin:
+        label: 'Admin'
     administration:
         label: 'Administration'
+    backoffice:
+        label: 'Backoffice'
     other:
         label: 'Other'

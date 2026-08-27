@@ -8,6 +8,7 @@ use App\Entity\Administration\Permission;
 use App\Entity\Administration\Role;
 use App\Repository\Administration\PermissionRepository;
 use App\Security\Permission as Perm;
+use App\Validator\Constraints\OnlyAdminCanGrantAdminPermission;
 use Symfony\Bridge\Doctrine\Form\Type\EntityType;
 use Symfony\Component\Form\AbstractType;
 use Symfony\Component\Form\Extension\Core\Type\TextType;
@@ -45,7 +46,10 @@ class RoleType extends AbstractType
                 'by_reference' => false,
                 'label'        => $this->translator->trans('app.administration.form.role.permissions'),
                 'block_prefix' => 'permission_picker',
-                'constraints'  => [new Assert\Count(min: 1, minMessage: $this->translator->trans('app.role.permission.min'))],
+                'constraints'  => [
+                    new Assert\Count(min: 1, minMessage: $this->translator->trans('app.role.permission.min')),
+                    new OnlyAdminCanGrantAdminPermission(),
+                ],
             ]);
     }
 
