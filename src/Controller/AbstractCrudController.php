@@ -4,9 +4,12 @@ declare(strict_types=1);
 
 namespace App\Controller;
 
+use App\Crud\BulkAction\BulkActionRegistry;
 use App\Security\CsrfProtectedActionTrait;
 use Doctrine\DBAL\Exception\ForeignKeyConstraintViolationException;
 use Doctrine\ORM\EntityManagerInterface;
+use Doctrine\ORM\QueryBuilder;
+use Doctrine\ORM\Tools\Pagination\Paginator;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\Form\FormInterface;
 use Symfony\Component\HttpFoundation\Request;
@@ -25,8 +28,23 @@ use App\Security\Permission as Perm;
  *   - class-level #[IsGranted(getRequiredPermission())] is applied by the
  *     subclass; this class does not assume the permission so it can be
  *     reused by entities that need a different gate.
- *   - additional method-level checks (e.g. delete requires a stronger
- *     permission) can be added in subclasses by overriding.
+ *   - row-action buttons (view/edit/delete/impersonate/resend) are
+ *     gated in Twig via `is_granted()` against the `get{Action}Permission()`
+ *     hooks below — see `templates/shared/crud/_row_actions.html.twig`.
+ *
+ * List (`list()`) capabilities — search, sortable columns, pagination,
+ * an opt-in filter form, and an opt-in bulk-action registry — are all
+ * OFF by default (empty/null hooks) and reproduce today's exact
+ * behaviour (`findBy([], ['id' => 'ASC'])`, unpaginated) until a
+ * concrete controller opts in by overriding the relevant hook. To add
+ * search/filtering to a new entity: override `isSearchEnabled()` +
+ * `applySearch()` for a plain text search, or `getFilterFormType()` +
+ * `applyFilterCriteria()` for a richer filter form — build the form as
+ * `method: 'GET'`, `csrf_protection: false`, and give it an empty
+ * `getBlockPrefix()` so field names are bare query params (see
+ * gestion-nova's `LeadFilterType` for a worked example of this
+ * convention; that project's Lead list is also the reference
+ * implementation this generic infrastructure was extracted from).
  *
  * All user-facing strings produced by this base are translated via
  * TranslatorInterface. Entity labels are still produced by the concrete
@@ -37,6 +55,7 @@ use App\Security\Permission as Perm;
 abstract class AbstractCrudController extends AbstractController
 {
     use CsrfProtectedActionTrait;
+    use CrudListQueryTrait;
 
     public function __construct(
         protected readonly EntityManagerInterface $em,
@@ -54,7 +73,7 @@ abstract class AbstractCrudController extends AbstractController
     /** @return string route prefix without trailing _list/_new/... e.g. 'administration_role' */
     abstract protected function getRoutePrefix(): string;
 
-    /** @return list<array{label:string,path:string,class?:string}> */
+    /** @return list<array{label:string,path:string,class?:string,sortable?:bool,sort_key?:string,cell_partial?:string}> */
     abstract protected function getListColumns(): array;
 
     abstract protected function getRequiredPermission(): string;
@@ -146,12 +165,10 @@ abstract class AbstractCrudController extends AbstractController
 
     /**
      * Route name for an "impersonate this row" action, or null to disable
-     * the button. Default: null. Subclasses that want a "log in as" button
-     * on each row override this to return the route name. The caller is
-     * responsible for ensuring the current user is allowed to impersonate
-     * (e.g. by returning null when `is_granted(PERMISSION_IMPERSONATE_USERS)`
-     * is false); the actual route still has `#[IsGranted]` as defence in
-     * depth.
+     * the button entirely (the entity has no such route). Default: null.
+     * Visibility beyond route-existence (permission + self/admin/active
+     * checks) is decided in Twig — see `getImpersonatePermission()` and
+     * `_row_actions.html.twig`.
      */
     protected function getImpersonatePath(): ?string
     {
@@ -159,14 +176,13 @@ abstract class AbstractCrudController extends AbstractController
     }
 
     /**
-     * Per-row hide flag for the impersonate button. Default: never hide.
-     * Subclasses override to suppress the button on the current user's own
-     * row, on admins, etc. The list partial uses the inverse — "show if
-     * not hidden" — so the default behaviour is "show on every row".
+     * Permission required to see the impersonate button, or null for
+     * unrestricted. Checked via `is_granted()` directly in
+     * `_row_actions.html.twig`.
      */
-    protected function shouldHideImpersonate(object $entity): bool
+    protected function getImpersonatePermission(): ?string
     {
-        return false;
+        return null;
     }
 
     /**
@@ -180,13 +196,41 @@ abstract class AbstractCrudController extends AbstractController
     }
 
     /**
-     * Per-row hide flag for the resend button. Default: never hide.
-     * Subclasses override to suppress on rows that aren't eligible
-     * (e.g. non-Pending users for the confirmation-resend flow).
+     * Permission required to see the resend button, or null for
+     * unrestricted.
      */
-    protected function shouldHideResend(object $entity): bool
+    protected function getResendPermission(): ?string
     {
-        return false;
+        return null;
+    }
+
+    /**
+     * Permission required to see the view button, or null (default) for
+     * unrestricted — every row that reaches the list can be viewed.
+     */
+    protected function getViewPermission(): ?string
+    {
+        return null;
+    }
+
+    /**
+     * Permission required to see the edit button, or null (default) for
+     * unrestricted.
+     */
+    protected function getEditPermission(): ?string
+    {
+        return null;
+    }
+
+    /**
+     * Permission required to see the delete button, or null (default)
+     * for unrestricted. Useful when the page-level gate is broader than
+     * the delete gate (e.g. everyone with VIEW_X can browse, but only
+     * EDIT_X can delete).
+     */
+    protected function getDeletePermission(): ?string
+    {
+        return null;
     }
 
     /**
@@ -200,6 +244,129 @@ abstract class AbstractCrudController extends AbstractController
      * of removing the entity.
      */
     protected function getDeleteBlockedReason(object $entity): ?string
+    {
+        return null;
+    }
+
+    /**
+     * Seed QueryBuilder for `list()`. Default selects the whole entity
+     * under alias `e`. Override to add joins/select — `applySearch()`
+     * / `applyFilterCriteria()` add WHEREs to whatever this returns, and
+     * `getSortableColumns()` / `getDefaultSort()` expressions must use
+     * whatever alias this method chooses.
+     */
+    protected function buildListQueryBuilder(): QueryBuilder
+    {
+        return $this->em->getRepository($this->getEntityClass())->createQueryBuilder('e');
+    }
+
+    /**
+     * Sortable columns for `list()`. Empty (default) = no column is
+     * sortable, `_list.html.twig` renders every header as a plain
+     * `<th>`. Map of public `?sort=` key => DQL-safe expression (e.g.
+     * `['email' => 'e.email']`) — never interpolate the raw query
+     * param into DQL directly; this whitelist is what makes that safe.
+     *
+     * @return array<string, string>
+     */
+    protected function getSortableColumns(): array
+    {
+        return [];
+    }
+
+    /**
+     * Fallback order applied when no valid `?sort=` is present. Default
+     * reproduces the pre-pagination behaviour (`id ASC`). Same shape as
+     * `getSortableColumns()`'s values: DQL-safe expression => direction.
+     *
+     * @return array<string, string>
+     */
+    protected function getDefaultSort(): array
+    {
+        return ['e.id' => 'ASC'];
+    }
+
+    /**
+     * Opt-in: when true, `list()` paginates via `?page=`/`?per_page=`
+     * instead of returning the full result set. Default false
+     * reproduces today's unpaginated behaviour.
+     */
+    protected function isPaginationEnabled(): bool
+    {
+        return false;
+    }
+
+    protected function getDefaultPerPage(): int
+    {
+        return 25;
+    }
+
+    /** @return list<int> */
+    protected function getPerPageOptions(): array
+    {
+        return [10, 25, 50];
+    }
+
+    /**
+     * Opt-in: when true, `list()` reads `?search=` and calls
+     * `applySearch()` with the trimmed, non-empty term.
+     */
+    protected function isSearchEnabled(): bool
+    {
+        return false;
+    }
+
+    /**
+     * Add a WHERE to `$qb` for the given non-empty search term. Default
+     * no-op — subclasses that set `isSearchEnabled(): true` must
+     * override this.
+     */
+    protected function applySearch(QueryBuilder $qb, string $term): void
+    {
+    }
+
+    protected function getSearchPlaceholder(): string
+    {
+        return $this->translator->trans('app.administration.crud.search_placeholder');
+    }
+
+    /**
+     * FQCN of a GET-bound, unmapped FormType for richer filtering, or
+     * null (default) to disable. See this class's docblock for the
+     * recommended FormType shape.
+     */
+    protected function getFilterFormType(): ?string
+    {
+        return null;
+    }
+
+    /**
+     * Add WHEREs to `$qb` from the bound filter form. Only called when
+     * `getFilterFormType()` returns non-null. Default no-op.
+     */
+    protected function applyFilterCriteria(QueryBuilder $qb, FormInterface $filterForm): void
+    {
+    }
+
+    /**
+     * Whether the bound filter form currently represents at least one
+     * active filter (drives the "no results match your filters" empty
+     * state vs the generic empty state). Default false — subclasses
+     * with a filter form should override.
+     */
+    protected function filterFormHasActiveFilters(FormInterface $filterForm): bool
+    {
+        return false;
+    }
+
+    /**
+     * Opt-in bulk-action registry for this list, or null (default) to
+     * disable the bulk-selection checkbox column entirely. When
+     * non-null, `_list.html.twig` renders `with_bulk_checkbox: true`
+     * and the template gets `bulk_actions` = the registry's
+     * permission-filtered list for the current user.
+     */
+    protected function getBulkActionRegistry(): ?BulkActionRegistry
     {
         return null;
     }
@@ -233,56 +400,97 @@ abstract class AbstractCrudController extends AbstractController
     {
         $this->denyAccessUnlessGranted($this->getRequiredPermission());
 
-        $repo = $this->em->getRepository($this->getEntityClass());
-        $items = $repo->findBy([], ['id' => 'ASC']);
+        $qb = $this->buildListQueryBuilder();
+
+        $searchTerm = '';
+        if ($this->isSearchEnabled()) {
+            $searchTerm = trim((string) $request->query->get('search', ''));
+            if ($searchTerm !== '') {
+                $this->applySearch($qb, $searchTerm);
+            }
+        }
+
+        $filterFormView = null;
+        $filterForm = null;
+        $filterFormType = $this->getFilterFormType();
+        if ($filterFormType !== null) {
+            $filterForm = $this->createForm($filterFormType, null, [
+                'method' => 'GET',
+                'csrf_protection' => false,
+            ]);
+            $filterForm->handleRequest($request);
+            $this->applyFilterCriteria($qb, $filterForm);
+            $filterFormView = $filterForm->createView();
+        }
+
+        $sortableColumns = $this->getSortableColumns();
+        $sortField = $this->resolveSortField($request->query->get('sort'), $sortableColumns);
+        $sortDir = $this->resolveSortDirection($sortField, $request->query->get('direction'));
+        if ($sortField !== null && $sortDir !== null) {
+            $qb->orderBy($sortableColumns[$sortField], $sortDir);
+        } else {
+            foreach ($this->getDefaultSort() as $expr => $dir) {
+                $qb->addOrderBy($expr, $dir);
+            }
+        }
+
+        $paginationEnabled = $this->isPaginationEnabled();
+        if ($paginationEnabled) {
+            $page = $this->resolvePage($request->query->get('page'));
+            $perPage = $this->resolvePerPage($request->query->get('per_page'), $this->getPerPageOptions(), $this->getDefaultPerPage());
+
+            $qb->setFirstResult(($page - 1) * $perPage)->setMaxResults($perPage);
+            $paginator = new Paginator($qb->getQuery(), fetchJoinCollection: false);
+            // Output walkers generate a correct COUNT when the source
+            // query has any JOINs — see LeadRepository::searchAndFilter()
+            // in gestion-nova, the reference implementation this was
+            // generalized from, for the over-count failure mode this
+            // avoids.
+            $paginator->setUseOutputWalkers(true);
+
+            $total = count($paginator);
+            $totalPages = max(1, (int) ceil($total / $perPage));
+            if ($page > $totalPages) {
+                // Stale page (e.g. a delete trimmed the list while the
+                // user was on a later page) — clamp instead of showing
+                // a misleading empty result.
+                $page = $totalPages;
+                $qb->setFirstResult(($page - 1) * $perPage);
+                $paginator = new Paginator($qb->getQuery(), fetchJoinCollection: false);
+                $paginator->setUseOutputWalkers(true);
+            }
+            $items = iterator_to_array($paginator, false);
+        } else {
+            $items = $qb->getQuery()->getResult();
+            $page = 1;
+            $perPage = count($items);
+            $total = count($items);
+            $totalPages = 1;
+        }
+
+        $hasAnyFilter = $searchTerm !== '' || ($filterForm !== null && $this->filterFormHasActiveFilters($filterForm));
 
         $csrf = $this->container->get('security.csrf.token_manager');
 
-        // Pre-generate a per-row delete CSRF token (the token id is
-        // `delete{id}`, scoped to the entity, so we need one per row).
+        // CSRF tokens are generated for every row on the current page,
+        // for every action whose route exists at all — visibility from
+        // there on is decided entirely in Twig (permission + row-state
+        // checks), not by conditionally omitting tokens.
         $deleteTokens = [];
-        foreach ($items as $item) {
-            $id = $item->getId();
-            if ($id !== null) {
-                $deleteTokens[$id] = $csrf->getToken('delete' . $id)->getValue();
-            }
-        }
-
-        // Impersonate button: optional. Only generates tokens for rows where
-        // the button is actually shown (avoids producing tokens for hidden
-        // rows). The set of hidden IDs is also passed so the partial can
-        // skip rendering the form per row.
         $impersonatePath = $this->getImpersonatePath();
         $impersonateTokens = [];
-        $hiddenIds = [];
-        if ($impersonatePath !== null) {
-            foreach ($items as $item) {
-                $id = $item->getId();
-                if ($id === null) {
-                    continue;
-                }
-                if ($this->shouldHideImpersonate($item)) {
-                    $hiddenIds[$id] = true;
-                    continue;
-                }
-                $impersonateTokens[$id] = $csrf->getToken('impersonate' . $id)->getValue();
-            }
-        }
-
-        // Resend button: optional. Same per-row token pattern.
         $resendPath = $this->getResendConfirmationPath();
         $resendTokens = [];
-        $resendHidden = [];
-        if ($resendPath !== null) {
-            foreach ($items as $item) {
-                $id = $item->getId();
-                if ($id === null) {
-                    continue;
-                }
-                if ($this->shouldHideResend($item)) {
-                    $resendHidden[$id] = true;
-                    continue;
-                }
+        foreach ($items as $item) {
+            $id = $item->getId();
+            if ($id === null) {
+                continue;
+            }
+            $deleteTokens[$id] = $csrf->getToken('delete' . $id)->getValue();
+            if ($impersonatePath !== null) {
+                $impersonateTokens[$id] = $csrf->getToken('impersonate' . $id)->getValue();
+            }
+            if ($resendPath !== null) {
                 $resendTokens[$id] = $csrf->getToken('resend_confirmation' . $id)->getValue();
             }
         }
@@ -297,6 +505,8 @@ abstract class AbstractCrudController extends AbstractController
             '%entity_plural%' => strtolower($this->getEntityLabelPlural()),
         ]);
 
+        $bulkRegistry = $this->getBulkActionRegistry();
+
         return $this->render($this->getTemplatePrefix() . '/list.html.twig', [
             'items'              => $items,
             'columns'            => $this->getListColumns(),
@@ -305,16 +515,35 @@ abstract class AbstractCrudController extends AbstractController
             'new_path'           => $this->getRoutePrefix() . '_new',
             'new_label'          => $newLabel,
             'view_path'          => $this->getRoutePrefix() . '_view',
+            'view_permission'    => $this->getViewPermission(),
             'edit_path'          => $this->getRoutePrefix() . '_edit',
+            'edit_permission'    => $this->getEditPermission(),
             'delete_path'        => $this->getRoutePrefix() . '_delete',
             'delete_tokens'      => $deleteTokens,
-            'impersonate_path'   => $impersonatePath,
-            'impersonate_tokens' => $impersonateTokens,
-            'hide_impersonate'   => array_keys($hiddenIds),
-            'resend_path'        => $resendPath,
-            'resend_tokens'      => $resendTokens,
-            'hide_resend'        => array_keys($resendHidden),
+            'delete_permission'  => $this->getDeletePermission(),
+            'impersonate_path'         => $impersonatePath,
+            'impersonate_tokens'       => $impersonateTokens,
+            'impersonate_permission'   => $this->getImpersonatePermission(),
+            'resend_path'              => $resendPath,
+            'resend_tokens'            => $resendTokens,
+            'resend_permission'        => $this->getResendPermission(),
             'empty_message'      => $emptyMessage,
+            'search_enabled'     => $this->isSearchEnabled(),
+            'search_term'        => $searchTerm,
+            'search_placeholder' => $this->getSearchPlaceholder(),
+            'filter_form'        => $filterFormView,
+            'sort_field'         => $sortField,
+            'sort_dir'           => $sortDir,
+            'current_url'        => $request->getRequestUri(),
+            'current_params'     => $request->query->all(),
+            'page'               => $page,
+            'per_page'           => $perPage,
+            'per_page_options'   => $this->getPerPageOptions(),
+            'total'              => $total,
+            'total_pages'        => $totalPages,
+            'has_any_filter'     => $hasAnyFilter,
+            'with_bulk_checkbox' => $bulkRegistry !== null,
+            'bulk_actions'       => $bulkRegistry?->getVisibleForCurrentUser() ?? [],
             'trail'              => $this->buildTrail(null, [
                 ['label' => $listTitle, 'path' => null],
             ]),

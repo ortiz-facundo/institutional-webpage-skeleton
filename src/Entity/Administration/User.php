@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Entity\Administration;
 
 use App\Repository\Administration\UserRepository;
+use App\Security\AdminPolicy;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
@@ -157,6 +158,17 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     public function isDisabled(): bool
     {
         return $this->state === self::USER_STATE_DISABLED;
+    }
+
+    /**
+     * Whether this user holds any admin-tier permission (see
+     * {@see AdminPolicy}). Twig-callable so row-action partials can
+     * gate a button directly off the row entity (e.g. hide "impersonate"
+     * on admin rows) without a controller-side hidden-id hook.
+     */
+    public function isAdmin(): bool
+    {
+        return AdminPolicy::isAdmin($this);
     }
 
     /** @var list<string> Locales the system knows about. Keep aligned with

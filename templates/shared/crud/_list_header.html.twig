@@ -1,0 +1,72 @@
+{#
+    Sortable column header.
+
+    Renders the `<th>` content for a single column as a plain
+    `<a href="…">` built with the `merge_query` Twig filter — no JS
+    needed. Each click is a normal navigation to the same list with
+    `sort`/`direction` set to the header's next state, and `page`
+    cleared back to 1 so a sort change doesn't leave the user stranded
+    past the new result set's last page.
+
+    Sort cycle (3-state):
+      - column not the current sort → next click is ASC
+      - column is the current ASC    → next click is DESC
+      - column is the current DESC   → next click clears (both params
+        removed), which `AbstractCrudController::list()` interprets as
+        "fall back to the default order".
+
+    Distinct icons per state (Heroicons 24/outline):
+      - unsorted → `chevron-up-down`   (subtle, hints the column is sortable)
+      - asc      → `arrow-up`
+      - desc     → `arrow-down`
+
+    Contract:
+      @var column      array   column def (label, path, optional sort_key)
+      @var sort_field   ?string current sort field key (or null)
+      @var sort_dir     ?string current sort direction ('ASC' / 'DESC' / null)
+      @var current_url  string  the request URI to build links from
+
+    `column.sort_key` (when present) is the canonical name exposed as
+    `?sort=…`. Defaults to `column.path` — most columns can use the
+    same string for both the data path and the sort key.
+#}
+{% set _sort_key = column.sort_key|default(column.path) %}
+{% set _is_active = sort_field|default(null) == _sort_key %}
+{% set _is_asc    = _is_active and sort_dir == 'ASC' %}
+{% set _is_desc   = _is_active and sort_dir == 'DESC' %}
+{% set _next_dir  = _is_asc ? 'DESC' : (_is_desc ? null : 'ASC') %}
+{% set _href = current_url|merge_query({'sort': _next_dir is null ? null : _sort_key, 'direction': _next_dir, 'page': null}) %}
+{% set _aria_label = _is_active
+    ? (_is_asc
+        ? 'app.shared.sort.sorted_asc_aria'|trans({'%column%': column.label})
+        : 'app.shared.sort.sorted_desc_aria'|trans({'%column%': column.label}))
+    : 'app.shared.sort.sort_by_aria'|trans({'%column%': column.label})
+%}
+
+<th scope="col" class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-stone-500">
+    <a href="{{ _href }}"
+       aria-label="{{ _aria_label }}"
+       class="group inline-flex items-center gap-1.5 rounded-md px-1.5 py-1 -mx-1.5 text-xs font-semibold uppercase tracking-wider text-stone-500 hover:text-stone-900 focus:outline-none focus:ring-2 focus:ring-amber-600 focus:ring-offset-2 {{ _is_active ? 'text-stone-900' : '' }}">
+        <span>{{ column.label }}</span>
+        <span aria-hidden="true" class="inline-flex h-4 w-4 shrink-0 items-center justify-center">
+            {% if _is_asc %}
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                     stroke-width="2" stroke="currentColor" class="h-3.5 w-3.5 text-amber-700">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 10.5 12 3m0 0 7.5 7.5M12 3v18" />
+                </svg>
+            {% elseif _is_desc %}
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                     stroke-width="2" stroke="currentColor" class="h-3.5 w-3.5 text-amber-700">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 13.5 12 21m0 0-7.5-7.5M12 21V3" />
+                </svg>
+            {% else %}
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                     stroke-width="1.5" stroke="currentColor"
+                     class="h-3.5 w-3.5 text-stone-300 group-hover:text-stone-500">
+                    <path stroke-linecap="round" stroke-linejoin="round"
+                          d="M8.25 15 12 18.75 15.75 15m-7.5-6L12 5.25 15.75 9" />
+                </svg>
+            {% endif %}
+        </span>
+    </a>
+</th>

@@ -58,6 +58,11 @@ app:
             new_button: 'New %entity%'
             empty: 'No %entity_plural% yet. Create the first one to get started.'
             delete_blocked_generic: 'Cannot delete %entity% — it still has related records.'
+            search_placeholder: 'Search…'
+            empty_with_filters: 'No results match your filters.'
+            per_page_label: 'Per page'
+            filters:
+                clear: 'Clear filters'
         # Entity-specific list column labels (kept here so each entity
         # can override without touching the partial).
         columns:

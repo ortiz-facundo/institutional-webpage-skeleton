@@ -17,3 +17,12 @@ app:
         errors:
             not_found: 'Entity not found.'
             invalid_csrf: 'Invalid CSRF token.'
+        sort:
+            sort_by_aria: 'Sort by %column%'
+            sorted_asc_aria: 'Sorted by %column% ascending — click to sort descending'
+            sorted_desc_aria: 'Sorted by %column% descending — click to clear sort'
+        pagination:
+            aria: 'Pagination'
+            previous_aria: 'Previous page'
+            next_aria: 'Next page'
+            showing: 'Showing %from%–%to% of %total%'

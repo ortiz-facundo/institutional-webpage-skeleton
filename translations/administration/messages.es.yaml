@@ -39,6 +39,11 @@ app:
                 view: '%display%'
             new_button: 'Nuevo %entity%'
             delete_blocked_generic: 'No se puede eliminar %entity%: todavía tiene registros relacionados.'
+            search_placeholder: 'Buscar…'
+            empty_with_filters: 'Ningún resultado coincide con tus filtros.'
+            per_page_label: 'Por página'
+            filters:
+                clear: 'Limpiar filtros'
         columns:
             user:
                 email: 'Correo electrónico'

@@ -1,36 +1,44 @@
 {#
     Reusable per-row action cell. Renders an eye (view), pencil (edit),
-    trash (delete), and (optionally) a "log in as" / impersonate button.
-    Delete is a CSRF-protected POST form inside the cell; the other three
-    are GET links or POST forms.
+    trash (delete), and (optionally) a "log in as" / resend button.
+    Delete/impersonate/resend are CSRF-protected POST forms inside the
+    cell; view/edit are GET links.
 
     Iconography: Heroicons 24/outline (MIT). Sized h-4 w-4 inside h-8 w-8
     square buttons. Stroke uses currentColor so the text-* utility sets
     the hue. Adding a fourth action? Add a block override in the
     consumer's index.html.twig that wraps this include.
 
+    Visibility model: every button is gated by ONE flat `{% if %}`
+    combining (a) the route existing at all (`*_path` non-null — some
+    entities simply don't have e.g. an impersonate route), (b) an
+    optional permission check via Symfony's built-in `is_granted()`
+    Twig function (`*_permission` null = unrestricted), and (c), for
+    impersonate/resend only, a plain inline condition read directly off
+    `entity` (no controller-side hidden-id hook — `User::isAdmin()` /
+    `isActive()` / `isPending()` are just methods Twig can call).
+
     Contract:
       @var entity                  object    the row's entity (needs getId())
       @var entity_label            string    e.g. 'User', 'Role'
       @var view_path               ?string   route name for view, optional
-      @var edit_path               ?string   route name for edit, optional
-      @var delete_path             ?string   route name for delete, optional
-      @var delete_token            ?string   CSRF token for this row (delete)
-      @var impersonate_path        ?string   route name for impersonate, optional
-      @var impersonate_token       ?string   CSRF token for this row (impersonate)
-      @var hide_impersonate        iterable<int>  entity ids for which to hide
-                                                   the impersonate button
-                                                   (self + admins + Pending)
-      @var resend_path             ?string   route name for resend (e.g. account
-                                             confirmation resend), optional
-      @var resend_token            ?string   CSRF token for this row (resend)
-      @var hide_resend             iterable<int>  entity ids for which to hide
-                                                   the resend button
-                                                   (anything not Pending)
+      @var view_permission         ?string   permission required to see it, or null
+      @var edit_path                ?string   route name for edit, optional
+      @var edit_permission          ?string   permission required to see it, or null
+      @var delete_path              ?string   route name for delete, optional
+      @var delete_token             ?string   CSRF token for this row (delete)
+      @var delete_permission        ?string   permission required to see it, or null
+      @var impersonate_path         ?string   route name for impersonate, optional
+      @var impersonate_token        ?string   CSRF token for this row (impersonate)
+      @var impersonate_permission   ?string   permission required to see it, or null
+      @var resend_path              ?string   route name for resend, optional
+      @var resend_token             ?string   CSRF token for this row (resend)
+      @var resend_permission        ?string   permission required to see it, or null
 #}
 <div class="inline-flex items-center gap-1">
     {% set _entity_lc = entity_label|default('item')|lower %}
-    {% if view_path is defined and view_path %}
+
+    {% if view_path is defined and view_path and (view_permission|default(null) is null or is_granted(view_permission)) %}
         <a href="{{ path(view_path, {id: entity.id}) }}"
            title="{{ 'app.administration.crud.actions.view'|trans({'%entity%': _entity_lc}) }}"
            aria-label="{{ 'app.administration.crud.actions.view'|trans({'%entity%': _entity_lc}) }}"
@@ -42,7 +50,7 @@
         </a>
     {% endif %}
 
-    {% if edit_path is defined and edit_path %}
+    {% if edit_path is defined and edit_path and (edit_permission|default(null) is null or is_granted(edit_permission)) %}
         <a href="{{ path(edit_path, {id: entity.id}) }}"
            title="{{ 'app.administration.crud.actions.edit'|trans({'%entity%': _entity_lc}) }}"
            aria-label="{{ 'app.administration.crud.actions.edit'|trans({'%entity%': _entity_lc}) }}"
@@ -53,10 +61,13 @@
         </a>
     {% endif %}
 
-    {# Impersonate / "log in as" — only when the consumer wires the path
-       AND the current row isn't self (or another admin that the consumer
-       passed in via hide_impersonate). #}
-    {% if impersonate_path is defined and impersonate_path and impersonate_token is defined and entity.id not in (hide_impersonate|default([])) %}
+    {# Impersonate / "log in as" — route existence, permission, AND
+       (not self, not an admin target, target must be Active). All
+       three business conditions are plain reads off `entity` /
+       `app.user` — no controller-side hidden-id hook. #}
+    {% if impersonate_path is defined and impersonate_path and impersonate_token is defined
+          and (impersonate_permission|default(null) is null or is_granted(impersonate_permission))
+          and entity.id != app.user.id and not entity.isAdmin() and entity.isActive() %}
         <form method="post" action="{{ path(impersonate_path, {id: entity.id}) }}" class="inline"
               onsubmit="return confirm('{{ 'app.administration.crud.confirm.impersonate'|trans({'%entity%': _entity_lc}) }}')">
             <input type="hidden" name="_token" value="{{ impersonate_token }}">
@@ -72,7 +83,12 @@
         </form>
     {% endif %}
 
-    {% if resend_path is defined and resend_path and resend_token is defined and entity.id not in (hide_resend|default([])) %}
+    {# Resend confirmation — route existence, permission, AND the row
+       must be a Pending user (only state where a confirmation token
+       makes sense). #}
+    {% if resend_path is defined and resend_path and resend_token is defined
+          and (resend_permission|default(null) is null or is_granted(resend_permission))
+          and entity.isPending() %}
         <form method="post" action="{{ path(resend_path, {id: entity.id}) }}" class="inline"
               onsubmit="return confirm('{{ 'app.administration.crud.confirm.resend'|trans({'%entity%': _entity_lc}) }}')">
             <input type="hidden" name="_token" value="{{ resend_token }}">
@@ -88,7 +104,8 @@
         </form>
     {% endif %}
 
-    {% if delete_path is defined and delete_path and delete_token is defined %}
+    {% if delete_path is defined and delete_path and delete_token is defined
+          and (delete_permission|default(null) is null or is_granted(delete_permission)) %}
         <form method="post" action="{{ path(delete_path, {id: entity.id}) }}" class="inline"
               onsubmit="return confirm('{{ 'app.administration.crud.confirm.delete'|trans({'%entity%': _entity_lc}) }}')">
             <input type="hidden" name="_token" value="{{ delete_token }}">

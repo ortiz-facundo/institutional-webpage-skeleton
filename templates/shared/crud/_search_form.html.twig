@@ -1,0 +1,28 @@
+{#
+    Minimal list search box. One text input, native GET submit
+    (Enter-to-submit, no JS), page reset to 1 on every search. Other
+    active query params (sort/direction/per_page) are re-emitted as
+    hidden inputs so submitting a search doesn't clear them — a native
+    GET form replaces the whole query string with just its own fields.
+
+    Contract:
+      @var search_term         string   current value of `?search=`
+      @var search_placeholder  string
+      @var current_params      array    the request's query params, keyed
+                                         by name
+#}
+<form method="get" class="mb-4 max-w-sm">
+    {% for key, val in current_params|default({}) %}
+        {% if key != 'page' and key != 'search' %}
+            <input type="hidden" name="{{ key }}" value="{{ val }}">
+        {% endif %}
+    {% endfor %}
+    <input type="hidden" name="page" value="1">
+    <label for="crud-list-search" class="sr-only">{{ search_placeholder|default('app.administration.crud.search_placeholder'|trans) }}</label>
+    <input type="search"
+           id="crud-list-search"
+           name="search"
+           value="{{ search_term|default('') }}"
+           placeholder="{{ search_placeholder|default('app.administration.crud.search_placeholder'|trans) }}"
+           class="block w-full rounded-md border border-stone-300 bg-white px-3 py-2 text-sm text-stone-900 placeholder-stone-400 shadow-sm focus:border-amber-600 focus:outline-none focus:ring-1 focus:ring-amber-600">
+</form>

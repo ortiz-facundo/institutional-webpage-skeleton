@@ -5,17 +5,56 @@
 {% block admin_body %}
     {% include 'shared/crud/_breadcrumbs.html.twig' with {trail: trail} %}
 
+    {% include 'shared/crud/_list_title.html.twig' with {
+        title: title,
+        new_path: new_path,
+        new_label: new_label,
+        total: total,
+        total_pages: total_pages,
+        has_any_filter: has_any_filter,
+        page: page,
+        per_page: per_page,
+        items: items
+    } %}
+
+    {% include 'shared/crud/_search_form.html.twig' with {
+        search_term: search_term,
+        search_placeholder: search_placeholder,
+        current_params: current_params
+    } %}
+
     {% include 'shared/crud/_list.html.twig' with {
         title: title,
         entity_label: entity_label,
         items: items,
         columns: columns,
-        new_path: new_path,
-        new_label: new_label,
         view_path: view_path,
+        view_permission: view_permission,
         edit_path: edit_path,
+        edit_permission: edit_permission,
         delete_path: delete_path,
         delete_tokens: delete_tokens,
-        empty_message: empty_message
+        delete_permission: delete_permission,
+        impersonate_path: impersonate_path,
+        impersonate_tokens: impersonate_tokens,
+        impersonate_permission: impersonate_permission,
+        resend_path: resend_path,
+        resend_tokens: resend_tokens,
+        resend_permission: resend_permission,
+        empty_message: empty_message,
+        has_any_filter: has_any_filter,
+        sort_field: sort_field,
+        sort_dir: sort_dir,
+        current_url: current_url
+    } %}
+
+    {% include 'shared/crud/_pagination.html.twig' with {
+        page: page,
+        per_page: per_page,
+        total: total,
+        total_pages: total_pages,
+        current_url: current_url,
+        current_params: current_params,
+        per_page_options: per_page_options
     } %}
 {% endblock %}

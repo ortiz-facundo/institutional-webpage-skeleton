@@ -8,12 +8,11 @@ use App\Controller\AbstractCrudController;
 use App\Entity\Administration\User;
 use App\Form\Administration\UserType;
 use App\Repository\Administration\UserRepository;
-use App\Security\AdminPolicy;
 use App\Security\Permission as Perm;
 use App\Service\Security\UserLifecycle\UserStateTransitionService;
 use Doctrine\ORM\EntityManagerInterface;
+use Doctrine\ORM\QueryBuilder;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
-use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\Form\FormInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -30,7 +29,6 @@ final class UserController extends AbstractCrudController
         TranslatorInterface $translator,
         private readonly UserRepository $users,
         private readonly UserStateTransitionService $stateTransition,
-        private readonly Security $security,
     ) {
         parent::__construct($em, $translator);
     }
@@ -59,10 +57,54 @@ final class UserController extends AbstractCrudController
     protected function getListColumns(): array
     {
         return [
-            ['label' => $this->translator->trans('app.administration.columns.user.email'), 'path' => 'email'],
-            ['label' => $this->translator->trans('app.administration.columns.user.name'),  'path' => 'name'],
+            ['label' => $this->translator->trans('app.administration.columns.user.email'), 'path' => 'email', 'sortable' => true],
+            ['label' => $this->translator->trans('app.administration.columns.user.name'),  'path' => 'name', 'sortable' => true],
             ['label' => $this->translator->trans('app.administration.columns.user.state'), 'path' => 'state', 'cell_partial' => '_state_pill.html.twig'],
         ];
+    }
+
+    /**
+     * Reference implementation of the generic list infrastructure
+     * (`AbstractCrudController::list()`): sortable email/name columns,
+     * a plain email/name search box, and pagination — demonstrating the
+     * pattern a new list entity follows to opt in. `Role`/`Permission`
+     * deliberately opt into none of this.
+     */
+    protected function getSortableColumns(): array
+    {
+        return ['email' => 'e.email', 'name' => 'e.name'];
+    }
+
+    protected function isPaginationEnabled(): bool
+    {
+        return true;
+    }
+
+    protected function getDefaultPerPage(): int
+    {
+        return 10;
+    }
+
+    protected function isSearchEnabled(): bool
+    {
+        return true;
+    }
+
+    protected function applySearch(QueryBuilder $qb, string $term): void
+    {
+        $qb->andWhere('LOWER(e.email) LIKE :search OR LOWER(e.name) LIKE :search')
+           ->setParameter('search', '%' . mb_strtolower($term) . '%');
+    }
+
+    /**
+     * Only admin-tier actors (holding PERMISSION_IMPERSONATE_USERS — see
+     * Permission::adminPermissions()) may delete a user row. Reuses the
+     * already-seeded, already-differentiated permission rather than
+     * introducing a new one.
+     */
+    protected function getDeletePermission(): ?string
+    {
+        return Perm::PERMISSION_IMPERSONATE_USERS;
     }
 
     protected function getRequiredPermission(): string
@@ -243,63 +285,31 @@ final class UserController extends AbstractCrudController
     }
 
     /**
-     * Enable the per-row "log in as" button only for callers who actually
-     * hold the impersonate permission. The route itself is gated again by
-     * `#[IsGranted]` on ImpersonateController::impersonate().
+     * The impersonate route exists for every row — visibility (does the
+     * caller hold the permission? is the row self/admin/inactive?) is
+     * decided entirely in Twig now, via `getImpersonatePermission()`
+     * below plus `User::isAdmin()`/`isActive()` read directly off the
+     * row in `_row_actions.html.twig`. The route itself is gated again
+     * by `#[IsGranted]` on ImpersonateController::impersonate() as
+     * defence in depth.
      */
     protected function getImpersonatePath(): ?string
     {
-        if (!$this->security->isGranted(Perm::PERMISSION_IMPERSONATE_USERS)) {
-            return null;
-        }
         return 'administration_user_impersonate';
     }
 
-    /**
-     * Hide the impersonate button on:
-     *   - the current admin's own row (self-impersonation is blocked at
-     *     the controller too, but hiding it in the UI is clearer);
-     *   - any user that already holds a PERMISSION_MANAGE_* permission —
-     *     admin-to-admin impersonation is denied by policy;
-     *   - users that are not Active — Pending users have no password
-     *     set and Disabled users are blocked by an admin; either way
-     *     there is nothing useful to impersonate into.
-     */
-    protected function shouldHideImpersonate(object $entity): bool
+    protected function getImpersonatePermission(): ?string
     {
-        \assert($entity instanceof User);
-
-        $current = $this->security->getUser();
-        if ($current instanceof User && $current->getId() === $entity->getId()) {
-            return true;
-        }
-
-        if (AdminPolicy::isAdmin($entity)) {
-            return true;
-        }
-
-        // Only Active users are valid impersonation targets.
-        if (!$entity->isActive()) {
-            return true;
-        }
-
-        return false;
+        return Perm::PERMISSION_IMPERSONATE_USERS;
     }
 
     /**
-     * Per-row resend button on the user list. Visible only for Pending
-     * users (the only state where a confirmation token makes sense).
+     * Per-row resend button on the user list. The route exists for
+     * every row; `_row_actions.html.twig` shows it only for Pending
+     * users via `User::isPending()`.
      */
     protected function getResendConfirmationPath(): ?string
     {
         return 'administration_user_resend_confirmation';
-    }
-
-    protected function shouldHideResend(object $entity): bool
-    {
-        \assert($entity instanceof User);
-        // Only show resend for Pending users; Active and Disabled users
-        // already have a usable credential or are blocked by admin.
-        return !$entity->isPending();
     }
 }

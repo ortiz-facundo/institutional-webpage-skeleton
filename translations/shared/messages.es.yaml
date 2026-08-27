@@ -10,3 +10,12 @@ app:
         errors:
             not_found: 'Entidad no encontrada.'
             invalid_csrf: 'Token CSRF no válido.'
+        sort:
+            sort_by_aria: 'Ordenar por %column%'
+            sorted_asc_aria: 'Ordenado por %column% ascendente — hacé clic para ordenar descendente'
+            sorted_desc_aria: 'Ordenado por %column% descendente — hacé clic para quitar el orden'
+        pagination:
+            aria: 'Paginación'
+            previous_aria: 'Página anterior'
+            next_aria: 'Página siguiente'
+            showing: 'Mostrando %from%–%to% de %total%'
