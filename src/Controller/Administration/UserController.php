@@ -152,19 +152,27 @@ final class UserController extends AbstractCrudController
     }
 
     /**
-     * Replaces UserType's old POST_SET_DATA listener. The
-     * `roleEntities` field is `mapped: false`, so the form's data
-     * mapper never reads from User::$roles. We populate it here,
-     * before the request is bound, so the checkboxes reflect the
-     * entity's current role set on GET and on any re-render after a
-     * validation failure.
+     * Replaces UserType's old POST_SET_DATA listener. `roleEntities`
+     * and `state` are both `mapped: false`, so the form's data mapper
+     * never reads either from the entity. We populate them here,
+     * before the request is bound, so the checkboxes/dropdown reflect
+     * the entity's current values on GET and on any re-render after a
+     * validation failure. Without this, `state` silently rendered
+     * unselected — a native `<select>` masks that by falling back to
+     * showing its first `<option>`, but it was never actually bound to
+     * the entity's real state.
      */
     protected function preBindForm(FormInterface $form, object $entity): void
     {
-        if (!$entity instanceof User || !$form->has('roleEntities')) {
+        if (!$entity instanceof User) {
             return;
         }
-        $form->get('roleEntities')->setData($entity->getRoleEntities()->toArray());
+        if ($form->has('roleEntities')) {
+            $form->get('roleEntities')->setData($entity->getRoleEntities()->toArray());
+        }
+        if ($form->has('state')) {
+            $form->get('state')->setData($entity->getState());
+        }
     }
 
     /**

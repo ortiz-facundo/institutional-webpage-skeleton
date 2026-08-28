@@ -19,3 +19,8 @@ app:
             previous_aria: 'Página anterior'
             next_aria: 'Página siguiente'
             showing: 'Mostrando %from%–%to% de %total%'
+        custom_select:
+            filter_placeholder: 'Filtrar…'
+            filter_aria: 'Filtrar opciones'
+            select_all: 'Seleccionar todo'
+            deselect_all: 'Deseleccionar todo'

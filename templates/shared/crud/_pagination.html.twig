@@ -5,10 +5,13 @@
 
     Page-number links preserve every other query param via the
     `merge_query` Twig filter (`App\Twig\QueryStringExtension`). The
-    per-page selector is a native `<select onchange="this.form.submit()">`
-    inside a small GET form that re-emits the current query params as
-    hidden inputs (a native form submit replaces the whole query string,
-    so anything not re-emitted would be lost — e.g. an active `search`).
+    per-page selector uses the shared CustomSelect component (form mode,
+    listbox flipped upward since the control sits at the bottom of the
+    page) inside a small GET form that re-emits the current query params
+    as hidden inputs (a native form submit replaces the whole query
+    string, so anything not re-emitted would be lost — e.g. an active
+    `search`). `assets/js/crud-list-toolbar.js` auto-submits the form
+    when CustomSelect's hidden native `<select>` fires `change`.
 
     Contract:
       @var page             int     1-based current page
@@ -94,21 +97,32 @@
             <div class="min-w-0 flex-1"></div>
         {% endif %}
 
-        <form method="get" class="shrink-0 flex items-center gap-1.5">
+        <form method="get" class="shrink-0 flex items-center gap-1.5" data-crud-per-page-form>
             {% for key, val in current_params|default({}) %}
                 {% if key != 'page' and key != 'per_page' %}
                     <input type="hidden" name="{{ key }}" value="{{ val }}">
                 {% endif %}
             {% endfor %}
-            <label for="crud-list-per-page" class="text-xs font-semibold uppercase tracking-wider text-stone-500">
+            <input type="hidden" data-crud-filter-page name="page" value="1">
+            <label class="text-xs font-semibold uppercase tracking-wider text-stone-500">
                 {{ 'app.administration.crud.per_page_label'|trans }}
             </label>
-            <select id="crud-list-per-page" name="per_page" onchange="this.form.submit()"
-                    class="rounded-md border border-stone-300 bg-white py-1 pl-2 pr-6 text-sm text-stone-800 shadow-sm focus:border-amber-600 focus:outline-none focus:ring-1 focus:ring-amber-600">
+            {# w-24, not w-20: the listbox's checkmark icon (size-5) + gap-3 +
+               px-3 padding leave very little room for the option text at
+               narrower widths — a 2-digit value like "50" was getting
+               truncated to a single character. #}
+            <div class="w-24">
+                {% set _per_page_options = [] %}
                 {% for option in per_page_options|default([10, 25, 50]) %}
-                    <option value="{{ option }}" {{ option == per_page ? 'selected' : '' }}>{{ option }}</option>
+                    {% set _per_page_options = _per_page_options|merge([{value: option, label: option}]) %}
                 {% endfor %}
-            </select>
+                {% include 'shared/custom_select.html.twig' with {
+                    name: 'per_page',
+                    value: per_page,
+                    options: _per_page_options,
+                    listbox_position: 'up',
+                } only %}
+            </div>
         </form>
     </nav>
 {% endif %}

@@ -544,9 +544,11 @@ abstract class AbstractCrudController extends AbstractController
             'has_any_filter'     => $hasAnyFilter,
             'with_bulk_checkbox' => $bulkRegistry !== null,
             'bulk_actions'       => $bulkRegistry?->getVisibleForCurrentUser() ?? [],
-            'trail'              => $this->buildTrail(null, [
-                ['label' => $listTitle, 'path' => null],
-            ]),
+            // `buildTrail(null, …)` already appends the list label as
+            // the trail's last (unlinked) segment when `$listLink` is
+            // null — no `extra` here, or it duplicates ("Dashboard >
+            // Users > Users").
+            'trail'              => $this->buildTrail(null),
         ]);
     }
 

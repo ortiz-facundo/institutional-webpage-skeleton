@@ -26,3 +26,8 @@ app:
             previous_aria: 'Previous page'
             next_aria: 'Next page'
             showing: 'Showing %from%–%to% of %total%'
+        custom_select:
+            filter_placeholder: 'Filter…'
+            filter_aria: 'Filter options'
+            select_all: 'Select all'
+            deselect_all: 'Deselect all'

@@ -51,9 +51,10 @@
       one" copy.
 
       Bulk-selection column (opt-in): when `with_bulk_checkbox` is true,
-      the table renders a leading checkbox column (plain `<input
-      type="checkbox">`, no JS — a real bulk-action consumer wires its
-      own selection JS when it lands).
+      the table renders a leading checkbox column. `assets/js/crud-bulk-
+      actions.js` wires the checkboxes to the bulk-actions disclosure
+      rendered by `_list_toolbar.html.twig` (select-all, per-row count,
+      modal dispatch).
 #}
 
 {% if items|length == 0 %}
@@ -85,7 +86,8 @@
                 <tr>
                     {% if with_bulk_checkbox|default(false) %}
                         <th scope="col" class="w-10 px-4 py-3">
-                            <input type="checkbox" data-crud-bulk-select-all
+                            <label class="sr-only" for="crud-bulk-select-all">{{ 'app.administration.crud.bulk.select_all_aria'|trans }}</label>
+                            <input type="checkbox" id="crud-bulk-select-all" data-crud-bulk-select-all
                                    class="h-4 w-4 rounded border-stone-300 text-amber-700 focus:ring-amber-600">
                         </th>
                     {% endif %}
@@ -111,7 +113,8 @@
                     <tr class="hover:bg-stone-50">
                         {% if with_bulk_checkbox|default(false) %}
                             <td class="w-10 px-4 py-3">
-                                <input type="checkbox" data-crud-bulk-row value="{{ item.id }}"
+                                <label class="sr-only" for="crud-bulk-row-{{ item.id }}">{{ 'app.administration.crud.bulk.select_row_aria'|trans }}</label>
+                                <input type="checkbox" id="crud-bulk-row-{{ item.id }}" data-crud-bulk-row value="{{ item.id }}"
                                        class="h-4 w-4 rounded border-stone-300 text-amber-700 focus:ring-amber-600">
                             </td>
                         {% endif %}

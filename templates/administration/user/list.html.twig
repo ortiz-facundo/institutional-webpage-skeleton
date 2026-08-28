@@ -17,10 +17,15 @@
         items: items
     } %}
 
-    {% include 'shared/crud/_search_form.html.twig' with {
+    {% include 'shared/crud/_list_toolbar.html.twig' with {
         search_term: search_term,
         search_placeholder: search_placeholder,
-        current_params: current_params
+        has_any_filter: has_any_filter,
+        sort_field: sort_field,
+        sort_dir: sort_dir,
+        current_url: current_url,
+        bulk_actions: bulk_actions,
+        entity_label: entity_label
     } %}
 
     {% include 'shared/crud/_list.html.twig' with {

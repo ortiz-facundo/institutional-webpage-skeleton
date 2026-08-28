@@ -10,7 +10,12 @@
       - form_widget_simple   (covers text/email/password/url/tel/etc.)
       - textarea_widget
       - choice_widget_expanded
-      - choice_widget_collapsed
+      - choice_widget_collapsed  (renders via shared/custom_select.html.twig
+                                   instead of a native <select> — every
+                                   ChoiceType/EntityType field in the app
+                                   that isn't `expanded: true` picks this
+                                   up automatically, e.g. UserType::state,
+                                   LocaleType::locale)
       - checkbox_widget
       - permission_picker_widget  (RoleType::permissions — grouped by module)
 #}
@@ -88,11 +93,39 @@
     </div>
 {% endblock %}
 
+{# Every non-expanded ChoiceType/EntityType field (a native <select> in
+   the default theme) renders through the shared CustomSelect component
+   instead. `choices` here can be flat or one level of `optgroup`-style
+   grouping (Symfony's ChoiceView tree) — both are flattened into the
+   `{value, label}` list the component expects. The field's own label is
+   still rendered by the surrounding `form_label` block (via `form_row`),
+   so no `label` is passed here — that would double it up. #}
 {% block choice_widget_collapsed %}
-    {% set attr = attr|merge({
-        class: (attr.class|default('') ~ ' block w-full rounded-md border border-stone-300 bg-white px-3 py-2 text-stone-900 shadow-sm focus:border-amber-600 focus:outline-none focus:ring-1 focus:ring-amber-600')|trim
-    }) %}
-    {{ parent() }}
+    {% set _options = [] %}
+    {% for _group_label, _choice in choices %}
+        {% if _choice is iterable %}
+            {% for _opt in _choice %}
+                {% set _options = _options|merge([{
+                    value: _opt.value,
+                    label: choice_translation_domain is same as(false) ? _opt.label : _opt.label|trans(_opt.labelTranslationParameters, choice_translation_domain),
+                }]) %}
+            {% endfor %}
+        {% else %}
+            {% set _options = _options|merge([{
+                value: _choice.value,
+                label: choice_translation_domain is same as(false) ? _choice.label : _choice.label|trans(_choice.labelTranslationParameters, choice_translation_domain),
+            }]) %}
+        {% endif %}
+    {% endfor %}
+    {% include 'shared/custom_select.html.twig' with {
+        name: full_name,
+        id: id,
+        value: value,
+        options: _options,
+        placeholder: (placeholder is defined and placeholder is not none and placeholder != '') ? (translation_domain is same as(false) ? placeholder : placeholder|trans({}, translation_domain)) : '',
+        multiple: multiple|default(false),
+        invalid: not (valid|default(true)),
+    } only %}
 {% endblock %}
 
 {% block checkbox_widget %}

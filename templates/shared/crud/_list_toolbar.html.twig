@@ -1,0 +1,158 @@
+{#
+    List toolbar — filter/search popover (left) + optional bulk-actions
+    disclosure (right), on one row. Generalized from gestion-nova's
+    Lead-list toolbar. Currently only a plain search field lives inside
+    the filter popover (the skeleton has no multi-field filter form yet);
+    a future filter form can extend the popover body without changing
+    this shell — see `AbstractCrudController::getFilterFormType()`.
+
+    Renders a `<details>` element that acts as the filter disclosure
+    button + dropdown panel:
+
+       ┌─[🔍 Filters (1) ✕ ▾]─┐
+       │
+       ├─ when open ───────┤
+       │  Search             [_______]
+       │  ─────────────
+       │  [✕ Clear]      [Apply ▸]
+       └──────────────────────┘
+
+    Filter inputs do NOT auto-submit — the user edits the field and
+    clicks Apply (or presses Enter while focused on the search input)
+    to commit. The Apply button is `disabled` until JS detects the form
+    has unsaved edits (`assets/js/crud-list-toolbar.js`).
+
+    Contract:
+      @var search_term        string   current value of `?search=`
+      @var search_placeholder string
+      @var has_any_filter     bool     true when search_term is non-empty
+      @var sort_field         ?string  preserved across Apply
+      @var sort_dir           ?string  preserved across Apply
+      @var current_url        string   used to build the quick-clear link
+                                        (query string stripped) and to
+                                        derive the form's action
+      @var bulk_actions       list<App\Crud\BulkAction\BulkActionInterface>
+                                        optional — when non-empty, renders
+                                        the right-side bulk-actions
+                                        disclosure via
+                                        _bulk_actions_menu.html.twig
+      @var entity_label       string   e.g. 'User' — used in bulk-menu copy
+#}
+{% set _active_filters = (search_term|default('') is not empty) ? 1 : 0 %}
+{% set _action = current_url|default('')|split('?')|first %}
+
+<div class="mb-4 flex items-start justify-between gap-3">
+<div class="relative">
+<details class="relative" data-crud-filter-details>
+    <summary class="group inline-flex cursor-pointer list-none items-center gap-2 rounded-md border border-stone-300 bg-white px-3 py-2 text-sm font-medium text-stone-700 shadow-sm hover:bg-stone-50 focus:outline-none focus:ring-2 focus:ring-amber-600 focus:ring-offset-2
+                  {{ has_any_filter|default(false) ? 'border-amber-700 text-amber-800 hover:bg-amber-50' : '' }}
+                  [&::-webkit-details-marker]:hidden [&::marker]:hidden">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+             stroke-width="1.5" stroke="currentColor" aria-hidden="true" class="h-4 w-4">
+            <path stroke-linecap="round" stroke-linejoin="round"
+                  d="M12 3c2.755 0 5.455.232 8.083.678.533.09.917.556.917 1.096v1.044a2.25 2.25 0 0 1-.659 1.591l-5.432 5.432a2.25 2.25 0 0 0-.659 1.591v2.927a2.25 2.25 0 0 1-1.244 2.013L9.75 21v-6.568a2.25 2.25 0 0 0-.659-1.591L3.659 7.409A2.25 2.25 0 0 1 3 5.818V4.774c0-.54.384-1.006.917-1.096A48.32 48.32 0 0 1 12 3Z" />
+        </svg>
+        <span>{{ 'app.administration.crud.filters.button'|trans }}</span>
+        {% if _active_filters > 0 %}
+            <span data-crud-filter-count
+                  class="inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-amber-700 px-1.5 text-[0.6875rem] font-semibold text-white">{{ _active_filters }}</span>
+        {% else %}
+            <span data-crud-filter-count class="hidden"></span>
+        {% endif %}
+        <span data-crud-filter-dirty
+              class="hidden h-2 w-2 rounded-full bg-amber-500 ring-2 ring-white"
+              aria-label="{{ 'app.administration.crud.filters.dirty_aria'|trans }}"
+              title="{{ 'app.administration.crud.filters.dirty_aria'|trans }}"></span>
+
+        {% if has_any_filter|default(false) %}
+            <a href="{{ _action }}"
+               data-crud-filter-quick-clear
+               title="{{ 'app.administration.crud.filters.clear'|trans }}"
+               aria-label="{{ 'app.administration.crud.filters.clear'|trans }}"
+               onclick="event.stopPropagation();"
+               class="ml-0.5 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-stone-400 hover:bg-rose-50 hover:text-rose-700 focus:outline-none focus:ring-2 focus:ring-amber-600 focus:ring-offset-2">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                     stroke-width="2" stroke="currentColor" aria-hidden="true" class="h-3.5 w-3.5">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
+                </svg>
+            </a>
+        {% endif %}
+
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+             stroke-width="1.5" stroke="currentColor" aria-hidden="true"
+             class="h-4 w-4 transition-transform duration-150 group-open:rotate-180">
+            <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+        </svg>
+    </summary>
+
+    <div class="absolute left-0 top-full z-30 mt-2 w-80 max-w-[calc(100vw-2rem)] rounded-lg border border-stone-200 bg-white p-4 shadow-lg ring-1 ring-stone-900/5">
+        <form method="get" action="{{ _action }}" id="crud-filter-form"
+              data-crud-filter-form data-crud-filter-popover-form class="space-y-4">
+
+            <div>
+                <label for="crud-filter-search"
+                       class="block text-xs font-semibold uppercase tracking-[0.18em] text-stone-500 mb-1.5">
+                    {{ search_placeholder|default('app.administration.crud.search_placeholder'|trans) }}
+                </label>
+                <div class="relative">
+                    <span aria-hidden="true"
+                          class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-stone-400">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                             stroke-width="1.5" stroke="currentColor" class="h-4 w-4">
+                            <path stroke-linecap="round" stroke-linejoin="round"
+                                  d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
+                        </svg>
+                    </span>
+                    <input type="search" id="crud-filter-search" name="search" value="{{ search_term|default('') }}"
+                           placeholder="{{ search_placeholder|default('app.administration.crud.search_placeholder'|trans) }}"
+                           class="block w-full rounded-md border border-stone-300 bg-white pl-9 pr-3 py-2 text-sm text-stone-900 placeholder-stone-400 shadow-sm focus:border-amber-600 focus:outline-none focus:ring-1 focus:ring-amber-600">
+                </div>
+            </div>
+
+            {# Hidden sort state — pagination links and this form's Apply
+               button both write into the URL; preserving sort here means
+               Apply doesn't reset an active column sort. Page resets to
+               1 on every filter Apply (a stale later page after a
+               filter change would otherwise show a misleading "no
+               results" or clamp to a different row set). #}
+            <input type="hidden" name="sort" value="{{ sort_field|default('') }}">
+            <input type="hidden" name="direction" value="{{ sort_dir|default('') }}">
+            <input type="hidden" data-crud-filter-page name="page" value="1">
+
+            <div class="flex items-center justify-between gap-3 border-t border-stone-200 pt-3">
+                {% if _active_filters > 0 %}
+                    <a href="{{ _action }}"
+                       data-crud-filter-clear
+                       class="inline-flex items-center gap-1.5 rounded-md border border-stone-300 bg-white px-3 py-1.5 text-xs font-medium text-stone-700 shadow-sm hover:bg-stone-100 focus:outline-none focus:ring-2 focus:ring-stone-400 focus:ring-offset-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                             stroke-width="1.5" stroke="currentColor" aria-hidden="true" class="h-3.5 w-3.5">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
+                        </svg>
+                        {{ 'app.administration.crud.filters.clear'|trans }}
+                    </a>
+                {% else %}
+                    <span></span>
+                {% endif %}
+                <button type="submit"
+                        data-crud-filter-apply
+                        class="inline-flex items-center gap-1.5 rounded-md bg-stone-900 px-4 py-2 text-sm font-medium text-stone-50 shadow-sm transition-opacity hover:bg-stone-800 focus:outline-none focus:ring-2 focus:ring-amber-600 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+                        disabled>
+                    <span>{{ 'app.administration.crud.filters.apply'|trans }}</span>
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                         stroke-width="2" stroke="currentColor" aria-hidden="true" class="h-4 w-4">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" />
+                    </svg>
+                </button>
+            </div>
+        </form>
+    </div>
+</details>
+</div>
+
+    {% if bulk_actions is defined and bulk_actions|length > 0 %}
+        {% include 'shared/crud/_bulk_actions_menu.html.twig' with {
+            bulk_actions: bulk_actions,
+            entity_label: entity_label|default('item'),
+        } %}
+    {% endif %}
+</div>

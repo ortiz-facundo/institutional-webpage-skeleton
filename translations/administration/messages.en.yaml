@@ -62,7 +62,19 @@ app:
             empty_with_filters: 'No results match your filters.'
             per_page_label: 'Per page'
             filters:
+                button: 'Filters'
                 clear: 'Clear filters'
+                apply: 'Apply'
+                dirty_aria: 'Unsaved filter changes'
+            bulk:
+                select_all_aria: 'Select all rows'
+                select_row_aria: 'Select row'
+                menu:
+                    label: 'Bulk actions'
+                    empty_title: 'Select rows first'
+                    empty_hint: 'Check one or more rows to see available actions.'
+                    selected_one: '1 %entity% selected'
+                    selected_other: '%count% %entity%s selected'
         # Entity-specific list column labels (kept here so each entity
         # can override without touching the partial).
         columns:

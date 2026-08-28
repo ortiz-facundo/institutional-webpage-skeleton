@@ -43,7 +43,19 @@ app:
             empty_with_filters: 'Ningún resultado coincide con tus filtros.'
             per_page_label: 'Por página'
             filters:
+                button: 'Filtros'
                 clear: 'Limpiar filtros'
+                apply: 'Aplicar'
+                dirty_aria: 'Cambios de filtro sin aplicar'
+            bulk:
+                select_all_aria: 'Seleccionar todas las filas'
+                select_row_aria: 'Seleccionar fila'
+                menu:
+                    label: 'Acciones en lote'
+                    empty_title: 'Seleccioná filas primero'
+                    empty_hint: 'Marcá una o más filas para ver las acciones disponibles.'
+                    selected_one: '1 %entity% seleccionado'
+                    selected_other: '%count% %entity%s seleccionados'
         columns:
             user:
                 email: 'Correo electrónico'

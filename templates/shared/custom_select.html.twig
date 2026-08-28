@@ -1,0 +1,296 @@
+{#
+    Reusable CustomSelect component.
+
+    Custom dropdown widget built on three primitives — a trigger
+    `<button>`, a `<ul role="listbox">` panel, and an optional sr-only
+    `<select>` for native form submission. Behaviour is owned entirely
+    by `assets/scripts/custom_select.js`, which auto-detects the
+    operating mode from the data attributes on the root:
+
+      data-endpoint        — present? AJAX mode (POST on every change).
+                              absent? Form mode (writes to the hidden
+                              native `<select>` so the parent `<form>`
+                              submits the value).
+
+      data-csrf-token      — required for AJAX mode. Sent in the body
+                              alongside the chosen value.
+      data-payload-key     — form field name sent in the AJAX body
+                              (default: `value`).
+      data-csrf-param-name — form field name for the CSRF token
+                              (default: `_token`).
+      data-saved-text      — localised "Saved" string for the AJAX
+                              success flash (AJAX mode).
+
+      data-multiple="true" — multi-select mode. The trigger shows
+                              chip pills (up to 2, then "+N" overflow).
+                              The hidden native <select> gets
+                              `multiple`, and selecting toggles the
+                              item instead of replacing the value.
+
+      data-filter="true"   — show an inline filter input inside the
+                              panel. Auto-on for `multiple`, opt-in
+                              otherwise.
+
+    Markup contract (the JS keys off these data-* attributes):
+
+      [data-controller-root="custom-select"]
+        [data-select-trigger]            <button aria-haspopup="listbox">
+          [data-select-chips]              <span> holding chip pills
+                                           (multi-select only)
+          [data-select-label]             <span> with the human label
+                                           (single-select, or the
+                                           fallback for multi)
+          [data-select-summary]           <span> with the "+N more"
+                                           overflow count
+          [data-select-dot]               tiny status dot (hidden unless
+                                           the current option carries
+                                           dot_classes).
+        [data-select-chevron]             <svg>; rotates 180° on open.
+        [data-select-listbox][role="listbox"]
+          [data-select-filter]            <input type="search"> (multi only)
+          [data-select-option][role="option"]
+            [data-select-option-check]      checkbox square (multi only)
+            [data-select-option-dot]        tiny dot beside the option
+                                           label, when the option carries
+                                           dot_classes.
+            [data-select-option-label]     visible label inside the option.
+        [data-select-native]              sr-only `<select>` (form mode).
+        [data-select-feedback]            inline AJAX status surface
+                                           ("Saved" / error).
+
+    Contract:
+
+      @var name              Form field name for the hidden native
+                              <select>. Required in form mode.
+      @var value             Currently selected value. Scalar for
+                              single-select; list for multi-select.
+      @var options           Array of `{value, label, dot_classes?}`.
+                              `dot_classes` paints a tiny dot inside both
+                              the trigger and each listbox option.
+      @var label             Optional form-field label rendered above.
+      @var placeholder       Optional. Shown when `value` is empty.
+      @var endpoint          AJAX endpoint (omit for form mode).
+      @var csrf_token        CSRF token id (AJAX mode).
+      @var saved_text        Localised "Saved" string.
+      @var id                Trigger button id. Auto-generated if absent.
+      @var payload_key       Form field name sent in the AJAX body.
+                              Defaults to "value".
+      @var csrf_param_name   Form field name for the CSRF token.
+                              Defaults to "_token".
+      @var ajax              Boolean — set true when endpoint is set,
+                              to disambiguate form mode from AJAX mode.
+      @var multiple          Boolean. Multi-select mode.
+      @var filter            Boolean. Force-show the inline filter
+                              input (auto-on for multiple).
+      @var max_chips         Integer. Chip limit before "+N more"
+                              summary kicks in. Defaults to 2.
+      @var invalid           Boolean. When true, the trigger gets a
+                              red contour + aria-invalid to signal a
+                              form-validation error on this field.
+      @var listbox_position  'down' (default) or 'up' — flips the
+                              listbox above the trigger.
+#}
+{% set options        = options ?? [] %}
+{% set value          = value ?? null %}
+{% set placeholder    = placeholder ?? '' %}
+{% set payload_key    = payload_key ?? 'value' %}
+{% set csrf_param_name = csrf_param_name ?? '_token' %}
+{% set _is_ajax       = (ajax ?? false) or (endpoint is defined and endpoint) %}
+{% set _endpoint      = (endpoint is defined and endpoint) ? endpoint : null %}
+{% set _csrf          = (csrf_token is defined and csrf_token) ? csrf_token(csrf_token)|trim : '' %}
+{% set _uuid          = (id ?? '') ~ '-' ~ random() %}
+{% set _multiple      = multiple|default(false) %}
+{% set _filter        = filter|default(_multiple) %}
+{% set _max_chips     = max_chips|default(2) %}
+{% set _invalid       = invalid|default(false) %}
+
+{# Normalise value to a list of strings — multi uses it directly;
+   single uses [0]. An EntityType field in multi-mode hands us an
+   array of entity objects; their IDs are extracted with a map()
+   filter that walks any object with a public `id` property and
+   otherwise keeps scalars as-is. #}
+{% set _selected_values = _multiple
+    ? (value is iterable
+        ? value|map(v => (v.id is defined and v.id is not null) ? v.id : v)
+        : [])
+    : (value is not empty ? [value] : [])
+%}
+
+{# Effective label for single-select current selection. #}
+{% set _current_label = placeholder %}
+{% set _current_dot   = '' %}
+{% if not _multiple %}
+    {% for o in options %}
+        {% if o.value == value %}
+            {% set _current_label = o.label %}
+            {% set _current_dot   = o.dot_classes|default('') %}
+        {% endif %}
+    {% endfor %}
+{% endif %}
+
+{# Selected options (multi) for chip rendering. #}
+{% set _selected_options = [] %}
+{% if _multiple %}
+    {% for o in options %}
+        {% if o.value in _selected_values %}
+            {% set _selected_options = _selected_options|merge([o]) %}
+        {% endif %}
+    {% endfor %}
+{% endif %}
+
+<div data-controller-root="custom-select"
+     {% if _endpoint %}data-endpoint="{{ _endpoint|e('html_attr') }}"{% endif %}
+     {% if _endpoint %}data-csrf-token="{{ _csrf|e('html_attr') }}"{% endif %}
+     {% if _endpoint %}data-payload-key="{{ payload_key|e('html_attr') }}"{% endif %}
+     {% if _endpoint %}data-csrf-param-name="{{ csrf_param_name|e('html_attr') }}"{% endif %}
+     {% if _endpoint and saved_text is defined and saved_text %}data-saved-text="{{ saved_text|e('html_attr') }}"{% endif %}
+     {% if _multiple %}data-multiple="true"{% endif %}
+     {% if _filter %}data-filter="true"{% endif %}
+     {% if listbox_position|default('down') == 'up' %}data-listbox-position="up"{% endif %}
+     {% if _multiple %}
+         data-value=""
+     {% else %}
+         data-value="{{ value|default('')|e('html_attr') }}"
+     {% endif %}
+{% if not _endpoint and name is defined and name %}data-name="{{ name|e('html_attr') }}"{% endif %}
+     data-max-chips="{{ _max_chips }}"
+     {% if _invalid %}aria-invalid="true" data-invalid="true"{% endif %}
+     class="relative{{ attr_class is defined and attr_class ? ' ' ~ attr_class : '' }}">
+
+     {% if label is defined and label %}
+        <label for="{{ _uuid }}" class="block text-xs font-semibold uppercase tracking-[0.18em] text-stone-500 mb-1.5">
+            {{ label }}
+        </label>
+    {% endif %}
+
+<button type="button"
+            id="{{ _uuid }}"
+            data-select-trigger
+            aria-haspopup="listbox"
+            aria-expanded="false"
+            {% if _multiple %}aria-multiselectable="true"{% endif %}
+            data-placeholder="{{ (_selected_values|length == 0) ? 'true' : 'false' }}"
+            class="group flex min-h-[2.625rem] w-full items-center justify-between gap-3 rounded-md border bg-white px-3 py-2 text-left text-sm shadow-sm transition-all hover:shadow focus:outline-none focus-visible:ring-4 {% if _invalid %}border-rose-500 hover:border-rose-600 focus-visible:border-rose-600 focus-visible:ring-rose-500/30{% else %}border-stone-300 hover:border-stone-400 focus-visible:border-stone-900 focus-visible:ring-stone-900/15{% endif %} data-[open=true]:border-stone-900 data-[open=true]:shadow-md data-[open=true]:ring-4 data-[open=true]:ring-stone-900/15 data-[placeholder=true]:text-stone-400 data-[selected=true]:text-stone-900">
+        <span class="inline-flex min-w-0 flex-1 flex-wrap items-center gap-1.5">
+            {% if _multiple %}
+                <span data-select-chips class="contents">
+                    {% for o in _selected_options|slice(0, _max_chips) %}
+                        <span class="inline-flex items-center gap-1 rounded-md bg-stone-100 px-2 py-0.5 text-xs font-medium text-stone-800">
+                            {% if o.dot_classes is defined and o.dot_classes %}
+                                <span aria-hidden="true" class="h-1.5 w-1.5 shrink-0 rounded-full {{ o.dot_classes }}"></span>
+                            {% endif %}
+                            <span>{{ o.label }}</span>
+                        </span>
+                    {% endfor %}
+                </span>
+                {% set _overflow = _selected_options|length - _max_chips %}
+                <span data-select-summary
+                      class="inline-flex items-center rounded-md bg-stone-900 px-2 py-0.5 text-xs font-medium text-white {{ _overflow > 0 ? '' : 'hidden' }}">
+                    {% if _overflow > 0 %}+{{ _overflow }}{% endif %}
+                </span>
+            {% else %}
+                <span aria-hidden="true"
+                      data-select-dot
+                      class="{% if _current_dot|length > 0 %}h-2 w-2 shrink-0 rounded-full {{ _current_dot }}{% else %}hidden h-2 w-2 shrink-0 rounded-full{% endif %}"></span>
+                <span data-select-label class="truncate">{{ _current_label }}</span>
+            {% endif %}
+        </span>
+        <svg data-select-chevron
+             xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"
+             aria-hidden="true"
+             class="h-4 w-4 shrink-0 text-stone-400 transition-transform duration-200 group-data-[open=true]:rotate-180 group-data-[open=true]:text-stone-900">
+            <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 0 1 1.06.02L10 11.168l3.71-3.938a.75.75 0 0 1 1.08 1.04l-4.25 4.5a.75.75 0 0 1-1.08 0l-4.25-4.5a.75.75 0 0 1 .02-1.06Z" clip-rule="evenodd" />
+        </svg>
+    </button>
+
+    <ul data-select-listbox
+        role="listbox"
+        aria-labelledby="{{ _uuid }}"
+        {% if _multiple %}aria-multiselectable="true"{% endif %}
+        inert
+        class="absolute left-0 right-0 top-full z-30 mt-2 origin-top overflow-hidden rounded-xl border border-stone-200 bg-white p-1.5 opacity-0 shadow-xl scale-95 transition-all duration-200 pointer-events-none data-[open=true]:opacity-100 data-[open=true]:scale-100 data-[open=true]:pointer-events-auto">
+        {% if _filter %}
+            <li class="sticky top-0 mb-1.5 bg-white pb-1.5">
+                <input type="search"
+                       data-select-filter
+                       placeholder="{{ 'app.shared.custom_select.filter_placeholder'|trans }}"
+                       aria-label="{{ 'app.shared.custom_select.filter_aria'|trans }}"
+                       class="block w-full rounded-md border border-stone-300 bg-white px-2.5 py-1.5 text-sm text-stone-900 placeholder-stone-400 focus:border-stone-900 focus:outline-none focus:ring-2 focus:ring-stone-900/20">
+            </li>
+        {% endif %}
+        {% if _multiple %}
+            {% set _all_selected = options|length > 0 and options|map(o => o.value)|filter(v => v in _selected_values)|length == options|length %}
+            {% set _label_select    = 'app.shared.custom_select.select_all'|trans %}
+            {% set _label_deselect  = 'app.shared.custom_select.deselect_all'|trans %}
+            <li class="sticky top-0 z-10 mb-1.5 -mx-1.5 border-b border-stone-100 bg-white pb-1.5 pt-0.5">
+                <button type="button"
+                        data-select-all-toggle
+                        data-action-mode="{{ _all_selected ? 'deselect' : 'select' }}"
+                        data-label-select="{{ _label_select }}"
+                        data-label-deselect="{{ _label_deselect }}"
+                        class="flex w-full items-center justify-between gap-2 rounded-md px-3 py-1.5 text-xs font-medium uppercase tracking-[0.12em] text-stone-600 hover:bg-stone-100 hover:text-stone-900 focus:outline-none focus:ring-2 focus:ring-stone-900/20">
+                    <span data-select-all-label>
+                        {{ _all_selected ? _label_deselect : _label_select }}
+                    </span>
+                    <span aria-hidden="true" data-select-all-icon class="inline-flex h-4 w-4 items-center justify-center">
+                        {% if _all_selected %}
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="h-3.5 w-3.5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" /></svg>
+                        {% else %}
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="h-3.5 w-3.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
+                        {% endif %}
+                    </span>
+                </button>
+            </li>
+        {% endif %}
+        {% for o in options %}
+            {% set is_selected = (o.value in _selected_values) %}
+            <li role="option"
+                data-select-option
+                data-value="{{ o.value|e('html_attr') }}"
+                {% if o.dot_classes is defined and o.dot_classes %}data-dot-classes="{{ o.dot_classes|e('html_attr') }}"{% endif %}
+                tabindex="0"
+                aria-selected="{{ is_selected ? 'true' : 'false' }}"
+                data-selected="{{ is_selected ? 'true' : 'false' }}"
+                class="group flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2 text-sm text-stone-700 transition-colors hover:bg-stone-100 focus:bg-stone-100 focus:outline-none data-[selected=true]:bg-stone-900 data-[selected=true]:font-semibold data-[selected=true]:text-white">
+                <span aria-hidden="true"
+                      data-select-option-check
+                      class="{% if _multiple %}flex h-4 w-4 shrink-0 items-center justify-center rounded border border-stone-300 bg-white text-transparent transition-colors group-data-[selected=true]:border-stone-900 group-data-[selected=true]:bg-stone-900 group-data-[selected=true]:text-white{% else %}flex size-5 shrink-0 items-center justify-center rounded-full border border-stone-300 text-transparent transition-colors group-data-[selected=true]:border-stone-900 group-data-[selected=true]:bg-stone-900 group-data-[selected=true]:text-white{% endif %}">
+                    {% if _multiple %}
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" aria-hidden="true" class="size-3">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+                        </svg>
+                    {% else %}
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" aria-hidden="true" class="size-3">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+                        </svg>
+                    {% endif %}
+                </span>
+                {% if o.dot_classes is defined and o.dot_classes %}
+                    <span aria-hidden="true" data-select-option-dot class="h-2 w-2 shrink-0 rounded-full {{ o.dot_classes }}"></span>
+                {% endif %}
+                <span class="flex-1 truncate" data-select-option-label>{{ o.label }}</span>
+            </li>
+        {% endfor %}
+    </ul>
+
+    {% if not _endpoint and name is defined %}
+        {% set _name = name %}
+        {% if _multiple and _name|slice(-2) != '[]' %}
+            {% set _name = _name ~ '[]' %}
+        {% endif %}
+        <select data-select-native
+                class="sr-only"
+                name="{{ _name }}"
+                {% if _multiple %}multiple{% endif %}>
+            {% for o in options %}
+                <option value="{{ o.value }}" {% if o.value in _selected_values %}selected{% endif %}>{{ o.label }}</option>
+            {% endfor %}
+        </select>
+    {% endif %}
+
+    {% if _endpoint %}
+        <span data-select-feedback
+              aria-live="polite"
+              class="absolute -bottom-5 left-0 hidden text-xs font-medium"></span>
+    {% endif %}
+</div>
