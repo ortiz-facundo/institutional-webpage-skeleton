@@ -62,6 +62,8 @@
  */
 
 class CustomSelectController {
+    #onViewportChange;
+
     constructor(root) {
         this.root = root;
         this.endpoint = root.dataset.endpoint || '';
@@ -97,16 +99,12 @@ class CustomSelectController {
         this.feedbackTimer = null;
         this.busy = false;
 
+        // Bound once so addEventListener/removeEventListener target
+        // the same function reference across open/close cycles.
+        this.#onViewportChange = () => this.#positionListbox();
+
         if (!this.trigger || !this.listbox || !this.options.length) return;
         if (!this.labelEl && !this.chipsEl) return;
-
-        // Apply the requested listbox position. The default CSS uses
-        // `top-full` (drops below the trigger); flipping re-anchors
-        // the listbox above. The transition's `transform-origin` is
-        // also flipped so the scale-in animates from the new edge.
-        if (this.listboxPosition === 'up') {
-            this.listbox.classList.add('!top-auto', '!bottom-full', '!mt-0', '!mb-2', 'origin-bottom');
-        }
 
         this.#initialSelectionFromNative();
         this.#setSelection(this.value, { announce: false });
@@ -227,6 +225,18 @@ class CustomSelectController {
 
         this.#positionListbox();
 
+        // The listbox is `position: fixed`, computed from the
+        // trigger's `getBoundingClientRect()` at open time. If the
+        // page (or any scrollable ancestor — a table's horizontal
+        // scroller, a scrollable modal body, the window itself)
+        // scrolls or the viewport resizes while open, that snapshot
+        // goes stale and the panel drifts away from its trigger.
+        // `scroll` doesn't bubble, so the listener is registered on
+        // `document` with `capture: true` to observe scrolling on
+        // every ancestor, not just the window.
+        document.addEventListener('scroll', this.#onViewportChange, true);
+        window.addEventListener('resize', this.#onViewportChange);
+
         if (this.filterInput) {
             this.filterInput.value = '';
             this.#applyFilter();
@@ -240,26 +250,51 @@ class CustomSelectController {
     }
 
     /**
-     * Compute viewport-position and flip the listbox above the
-     * trigger when there isn't enough room below. The `data-listbox-
-     * position="up"` static opt-in from the partial stays
-     * untouched — this method only flips dynamically.
+     * Compute the listbox's viewport position from the trigger's
+     * `getBoundingClientRect()` and write it as inline styles (the
+     * listbox is `position: fixed` — see the markup comment in
+     * custom_select.html.twig for why). Flips above the trigger when
+     * there isn't enough room below, unless the `data-listbox-
+     * position="up"` static opt-in forces it. Also clamps the panel's
+     * `max-height` to whatever room is actually left on its chosen
+     * side — the panel scrolls internally (`overflow-y-auto` in the
+     * markup) past that point instead of running off-screen, which
+     * matters once a modal's own scroll can put the trigger anywhere
+     * in the viewport.
+     *
+     * Re-run on every open AND on scroll/resize while open (wired in
+     * openList()/close()) so the panel tracks its trigger instead of
+     * drifting from a stale snapshot.
      */
     #positionListbox() {
-        if (this.listboxPosition === 'up') {
-            this.listbox.classList.add('!top-auto', '!bottom-full', '!mt-0', '!mb-2', 'origin-bottom');
-            return;
-        }
         const triggerRect = this.trigger.getBoundingClientRect();
-        const listboxMaxHeight = 240; // ~5 options × 48px
-        const spaceBelow = window.innerHeight - triggerRect.bottom;
-        const spaceAbove = triggerRect.top;
+        const GAP = 8; // matches the previous `mt-2`/`mb-2` (0.5rem)
+        const VIEWPORT_MARGIN = 16; // breathing room so the panel never touches the screen edge
+        const PREFERRED_MAX_HEIGHT = 288; // ~6 options × 48px — the size we'd like when there's room
+        const spaceBelow = window.innerHeight - triggerRect.bottom - GAP - VIEWPORT_MARGIN;
+        const spaceAbove = triggerRect.top - GAP - VIEWPORT_MARGIN;
+        // Flip up when below has clearly less room than we'd prefer
+        // AND there's more room above. The static `data-listbox-
+        // position="up"` opt-in always flips.
         const FLIP_HEADROOM = 16;
-        if (spaceBelow < listboxMaxHeight + FLIP_HEADROOM
-            && spaceAbove > spaceBelow + FLIP_HEADROOM) {
-            this.listbox.classList.add('!top-auto', '!bottom-full', '!mt-0', '!mb-2', 'origin-bottom');
+        const placeUp = this.listboxPosition === 'up'
+            || (spaceBelow < PREFERRED_MAX_HEIGHT + FLIP_HEADROOM
+                && spaceAbove > spaceBelow + FLIP_HEADROOM);
+
+        this.listbox.style.left = `${triggerRect.left}px`;
+        this.listbox.style.width = `${triggerRect.width}px`;
+        if (placeUp) {
+            this.listbox.style.top = 'auto';
+            this.listbox.style.bottom = `${window.innerHeight - triggerRect.top + GAP}px`;
+            this.listbox.style.maxHeight = `${Math.max(Math.min(spaceAbove, PREFERRED_MAX_HEIGHT), 100)}px`;
+            this.listbox.classList.add('origin-bottom');
+            this.listbox.classList.remove('origin-top');
         } else {
-            this.listbox.classList.remove('!top-auto', '!bottom-full', '!mt-0', '!mb-2', 'origin-bottom');
+            this.listbox.style.bottom = 'auto';
+            this.listbox.style.top = `${triggerRect.bottom + GAP}px`;
+            this.listbox.style.maxHeight = `${Math.max(Math.min(spaceBelow, PREFERRED_MAX_HEIGHT), 100)}px`;
+            this.listbox.classList.add('origin-top');
+            this.listbox.classList.remove('origin-bottom');
         }
     }
 
@@ -270,6 +305,8 @@ class CustomSelectController {
         delete this.trigger.dataset.open;
         delete this.listbox.dataset.open;
         this.listbox.setAttribute('inert', '');
+        document.removeEventListener('scroll', this.#onViewportChange, true);
+        window.removeEventListener('resize', this.#onViewportChange);
         if (refocus) this.trigger.focus({ preventScroll: true });
     }
 
