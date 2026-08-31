@@ -26,8 +26,8 @@
   create users via `/admin/users/new`, who confirm via email link.
 - Dev test user: `test@skeleton.local` / `test` (`ROLE_ADMIN`,
   `USER_STATE_ACTIVE`).
-- **Two downstream projects** track this skeleton as a git remote and rebase
-  off it:
+- **Two downstream projects** track this skeleton as a git remote and sync
+  off it via a tag-bounded cherry-pick (see `BRANCHING.md`):
   - `web-nova-argentum` — a public marketing site for a land-development
     business. Adds a public homepage, a contact form, and the cPanel
     deploy tooling.
@@ -43,7 +43,8 @@
 
 1. This file (you're here).
 2. `README.md` — full architecture, workflow, troubleshooting.
-3. `BRANCHING.md` — rebase workflow for the downstream projects.
+3. `BRANCHING.md` — tag-bounded cherry-pick sync workflow for the
+   downstream projects.
 4. `INFRASTRUCTURE_PLAN.md` — rationale for the infrastructure decisions
    (only consult when "why" questions come up, e.g. why Vite 5 and not 6,
    why PHP 8.4 and not 8.3, why no named volumes for vendor/var).
@@ -362,7 +363,7 @@ voter, `getRoles()` still saves you. Either alone is correct.
 
 ---
 
-## Downstream rebase workflow
+## Downstream sync workflow
 
 See `BRANCHING.md` for the full procedure. The short version:
 
@@ -370,14 +371,23 @@ See `BRANCHING.md` for the full procedure. The short version:
   (`web-nova-argentum` and `sci_gestion`). See above for what each adds.
 - Each downstream registers the skeleton as a remote: `git remote add skeleton
   git@github.com:ortiz-facundo/symfony-backoffice-skeleton.git`.
-- Generic improvements go to the skeleton first, then propagate via
-  `git fetch skeleton && git rebase skeleton/main`.
+- Generic improvements go to the skeleton first, then propagate via a
+  **tag-bounded cherry-pick**: each downstream keeps a `skeleton-sync`
+  tag marking the last skeleton commit it has accounted for, and a sync
+  only replays the commits *after* that tag. Full-history rebase/merge
+  was tried and abandoned once (gestion-nova, 2026-08-31) because the
+  skeleton's later commits were themselves generalized from downstream
+  code, producing large non-substantive conflicts.
+- Skeleton commits that generalize code lifted from a specific downstream
+  carry a `Source: <downstream-name>` trailer in the commit message; that
+  downstream's sync `--skip`s them automatically (it already has the
+  more-specific original).
 - Domain-specific work (public homepage, contact form, catalog, inventory)
   stays in the downstream.
 
 When you change a shared module in the skeleton, **stop and tell the user**
 that the change needs to be lifted into the downstreams. The user (not the
-agent) decides when to rebase.
+agent) decides when to sync.
 
 ---
 

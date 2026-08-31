@@ -126,7 +126,7 @@ public homepage override `HomeController` and add a
 | `assets/` | Vite inputs (`app.js` + `styles/app.css`) |
 | `vite.config.js` / `tailwind.config.js` / `postcss.config.js` | Frontend pipeline |
 | `bin/deploy.php` / `scripts/build-cpanel-zip.sh` / `README_DEPLOY.md` / `src/Command/Deploy/SeedProdCommand.php` | cPanel/FTP deploy tooling |
-| `BRANCHING.md` | Downstream rebase workflow |
+| `BRANCHING.md` | Downstream tag-bounded cherry-pick sync workflow |
 | `AGENTS.md` / `README.md` / `INFRASTRUCTURE_PLAN.md` | Documentation |
 
 ## Migration ordering

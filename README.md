@@ -20,8 +20,8 @@ without re-applying them by hand.
 - **Nova Argentum** (`web-nova-argentum`) — adds a public marketing site, a contact form, and cPanel deploy tooling.
 - **SCI Gestión** (`sci_gestion`) — general administration system for a textile company (Scachi — Indumentaria Institucional). Today ships the Catalog and Inventory modules; future modules (production, sales, purchasing, HR, accounting, reporting) will be added on the same architecture.
 
-See `BRANCHING.md` for the rebase workflow that keeps the two projects in sync
-with this skeleton.
+See `BRANCHING.md` for the tag-bounded cherry-pick workflow that keeps the
+two projects in sync with this skeleton.
 
 ---
 
@@ -641,7 +641,9 @@ git push -u origin main
 ```
 
 This is a clean copy. You can periodically pull improvements from the
-skeleton via `git fetch skeleton && git rebase skeleton/main`.
+skeleton via the tag-bounded cherry-pick workflow documented in
+`BRANCHING.md` (`git fetch skeleton` → `git log skeleton-sync..skeleton/main`
+→ `git cherry-pick <sha>` per commit → advance the `skeleton-sync` tag).
 
 ### Option B — `git remote add` (recommended for existing projects)
 
@@ -651,7 +653,7 @@ git remote add skeleton git@github.com:ortiz-facundo/symfony-backoffice-skeleton
 git fetch skeleton
 ```
 
-See `BRANCHING.md` for the full rebase and cherry-pick workflow.
+See `BRANCHING.md` for the full tag-bounded cherry-pick workflow.
 
 ### Customising the skeleton
 
