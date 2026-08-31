@@ -1,6 +1,6 @@
 {#
     Sidebar nav. This file is the single place to edit when adding or
-    re-ordering sidebar items: just append a row to the `nav_groups`
+    re-ordering sidebar items: just append a row to the `nav_groups_declared`
     set below. The renderer (macros + Heroicons map) lives in
     `_nav_macros.html.twig`; the outer chrome (logo, footer chip, sign-
     out) is at the bottom of this file.
@@ -21,8 +21,23 @@
       }
 
     Group schema:
+      position: 'first'|'last'|null (optional)             render-order anchor.
+                                                          'first'  → always rendered first
+                                                                    (declared order if multiple).
+                                                          'last'   → always rendered last
+                                                                    (declared order if multiple).
+                                                          null/absent → standalone, rendered
+                                                                    in declared order between
+                                                                    the first and last tiers.
       label: string|null                                  group heading. null = un-grouped
                                                           (no <h2>, no rule). Used for Dashboard.
+
+    Render order is driven by `position`: first-tier → standalone-tier →
+    last-tier. Within each tier the declared order is preserved. This lets
+    downstream projects append new modules as standalone (no `position`)
+    and have them slot between the skeleton's pinned Dashboard and
+    Administration groups automatically — without re-ordering the
+    declared array.
 
     Graceful collapse: groups with no items the current user is granted
     render nothing (no heading, no rule). See _nav_macros.html.twig.
@@ -34,8 +49,9 @@
     Contract:
       @var current_route  string  the active route name (for highlighting)
 #}
-{% set nav_groups = [
+{% set nav_groups_declared = [
     {
+        position: 'first',
         label: null,
         items: [
             {
@@ -48,6 +64,7 @@
         ],
     },
     {
+        position: 'last',
         label: 'app.backoffice.nav.administration'|trans,
         items: [
             {
@@ -74,6 +91,23 @@
         ],
     },
 ] %}
+
+{# Position-driven sort. Splits the declared array into three tiers and
+   concatenates them in canonical order: first → standalone → last.
+   Within each tier, declared order is preserved. #}
+{% set first_groups = [] %}
+{% set standalone_groups = [] %}
+{% set last_groups = [] %}
+{% for group in nav_groups_declared %}
+    {% if group.position|default(null) == 'first' %}
+        {% set first_groups = first_groups|merge([group]) %}
+    {% elseif group.position|default(null) == 'last' %}
+        {% set last_groups = last_groups|merge([group]) %}
+    {% else %}
+        {% set standalone_groups = standalone_groups|merge([group]) %}
+    {% endif %}
+{% endfor %}
+{% set nav_groups = first_groups|merge(standalone_groups)|merge(last_groups) %}
 {% import 'backoffice/_nav_macros.html.twig' as nav %}
 
 <aside class="sticky top-0 flex h-screen w-64 flex-col border-r border-stone-200 bg-white">

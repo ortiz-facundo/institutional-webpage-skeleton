@@ -817,7 +817,7 @@ single-row edit.
 
 | File | Role |
 |---|---|
-| `templates/backoffice/_sidebar.html.twig` | Declares `nav_groups` (pure data — `label`, `items`, with item fields `label`, `route`, `route_prefix`, `permission`, `icon`). Owns the outer chrome (logo, footer chip, sign-out). Imports the macros and iterates the groups. |
+| `templates/backoffice/_sidebar.html.twig` | Declares `nav_groups_declared` (pure data — per-group `position`/`label`/`items`, with item fields `label`, `route`, `route_prefix`, `permission`, `icon`). Sorts the declared array by `position` into the rendered `nav_groups`. Owns the outer chrome (logo, footer chip, sign-out). Imports the macros and iterates the groups. |
 | `templates/backoffice/_nav_macros.html.twig` | **Renderer.** Three macros — `nav_item`, `nav_group`, `icon_d` (last is private to the renderer; exposes the Heroicons `d=` strings). No data here. |
 
 **Item schema.** `permission` is the `App\Security\Permission::*` constant
@@ -827,14 +827,40 @@ and calls `is_granted(constant(...))`. `icon` is a key into the map
 inside the `icon_d` macro; current keys are `dashboard`, `users`,
 `shield`, `key`.
 
-**Group schema.** `label: null` means un-grouped (no `<h2>`, no rule) —
-used for Dashboard. Grouped items render under a small uppercase
-stone-400 heading with a hairline rule.
+**Group schema.** Every group has two optional fields:
+
+- `position` (`'first'` | `'last'` | omitted/null) — render-order anchor.
+  - `'first'` → always rendered first (declared order if multiple).
+  - `'last'` → always rendered last (declared order if multiple).
+  - omitted/null → standalone, rendered in declared order between the
+    `'first'` and `'last'` tiers.
+- `label` (`string` | `null`) — group heading. `null` means un-grouped
+  (no `<h2>`, no rule). Used for Dashboard. Non-null groups render under
+  a small uppercase stone-400 heading with a hairline rule.
+
+**Render order (general rule — applies to skeleton and every downstream).**
+The sidebar iterates three tiers in this canonical order:
+
+```
+position: 'first'  →  standalone (no position)  →  position: 'last'
+```
+
+Within each tier, the declared order is preserved. The skeleton's own
+groups are pinned: Dashboard declares `position: 'first'`, Administration
+declares `position: 'last'`. Downstream projects that add a new module
+declare it as standalone (omit `position`) and it slots between the
+pinned `'first'` and `'last'` groups automatically — no re-ordering of
+the declared array needed. To pin a downstream module of your own, set
+its `position` to `'first'` or `'last'` explicitly; only one group per
+tier is expected, but the sort tolerates multiple by preserving
+declared order within the tier.
 
 **Graceful collapse.** `nav_group` filters its items to the ones the
 current user is granted and renders nothing — heading and rule
 included — when no items remain. This is how a `ROLE_USER` ends up
-seeing no Administration group at all.
+seeing no Administration group at all. A pinned group with all items
+filtered out (e.g. an admin user who lost all admin permissions) is
+still dropped from the rendered output.
 
 **To add a new entity to the sidebar:** append one row to the relevant
 group's `items` in `_sidebar.html.twig`. To add a new icon, append
@@ -842,6 +868,10 @@ its Heroicons `d=` string to the `icon_d` macro in
 `_nav_macros.html.twig` and reference the key from the config.
 Backoffice nav items reference `administration_*` route names today;
 add a `permission_class` field per item if you need to span modules.
+
+**To add a whole new module to the sidebar:** append a new entry to
+`nav_groups_declared` with its own `label` and `items`. Omit `position`
+unless you want it pinned (see "Render order" above).
 
 ### Technical conventions
 

@@ -89,7 +89,11 @@
     {% endif %}
 {% endmacro %}
 
-{# @var group array { label: string|null, items: list<item> } #}
+{# @var group array {
+        position: 'first'|'last'|null (optional),   render-order anchor (see _sidebar.html.twig)
+        label:    string|null,                     group heading; null = un-grouped
+        items:    list<item>
+    } #}
 {% macro nav_group(group, current_route) %}
     {% import _self as self %}
     {% set visible_items = [] %}
