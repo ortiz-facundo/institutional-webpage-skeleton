@@ -28,8 +28,8 @@
                               item instead of replacing the value.
 
       data-filter="true"   — show an inline filter input inside the
-                              panel. Auto-on for `multiple`, opt-in
-                              otherwise.
+                              panel. Opt-in only — off by default,
+                              multi-select included.
 
     Markup contract (the JS keys off these data-* attributes):
 
@@ -80,8 +80,13 @@
       @var ajax              Boolean — set true when endpoint is set,
                               to disambiguate form mode from AJAX mode.
       @var multiple          Boolean. Multi-select mode.
-      @var filter            Boolean. Force-show the inline filter
-                              input (auto-on for multiple).
+      @var filter            Boolean. Show the inline filter input.
+                              Opt-in — off by default, even for
+                              multi-select.
+      @var select_all        Boolean. Multi-select only. Show the
+                              "Select all / Deselect all" toggle at
+                              the top of the listbox. Opt-in — off by
+                              default.
       @var max_chips         Integer. Chip limit before "+N more"
                               summary kicks in. Defaults to 2.
       @var invalid           Boolean. When true, the trigger gets a
@@ -100,7 +105,8 @@
 {% set _csrf          = (csrf_token is defined and csrf_token) ? csrf_token(csrf_token)|trim : '' %}
 {% set _uuid          = (id ?? '') ~ '-' ~ random() %}
 {% set _multiple      = multiple|default(false) %}
-{% set _filter        = filter|default(_multiple) %}
+{% set _filter        = filter|default(false) %}
+{% set _select_all    = _multiple and select_all|default(false) %}
 {% set _max_chips     = max_chips|default(2) %}
 {% set _invalid       = invalid|default(false) %}
 
@@ -170,6 +176,14 @@
             aria-expanded="false"
             {% if _multiple %}aria-multiselectable="true"{% endif %}
             data-placeholder="{{ (_selected_values|length == 0) ? 'true' : 'false' }}"
+            {# Read by custom_select.js's `#renderSingle()` fallback
+               when nothing matches the current value in `this.options`
+               — which, now that the placeholder is excluded from the
+               visible listbox (`is_placeholder`, see the option-loop
+               comment below), is exactly the "nothing selected" case
+               for single-select. Without this the trigger falls back
+               to an empty string and renders blank. #}
+            {% if not _multiple %}data-placeholder-label="{{ placeholder|e('html_attr') }}"{% endif %}
             class="group flex min-h-[2.625rem] w-full items-center justify-between gap-3 rounded-md border bg-white px-3 py-2 text-left text-sm shadow-sm transition-all hover:shadow focus:outline-none focus-visible:ring-4 {% if _invalid %}border-rose-500 hover:border-rose-600 focus-visible:border-rose-600 focus-visible:ring-rose-500/30{% else %}border-stone-300 hover:border-stone-400 focus-visible:border-stone-900 focus-visible:ring-stone-900/15{% endif %} data-[open=true]:border-stone-900 data-[open=true]:shadow-md data-[open=true]:ring-4 data-[open=true]:ring-stone-900/15 data-[placeholder=true]:text-stone-400 data-[selected=true]:text-stone-900">
         <span class="inline-flex min-w-0 flex-1 flex-wrap items-center gap-1.5">
             {% if _multiple %}
@@ -208,7 +222,20 @@
         aria-labelledby="{{ _uuid }}"
         {% if _multiple %}aria-multiselectable="true"{% endif %}
         inert
-        class="absolute left-0 right-0 top-full z-30 mt-2 origin-top overflow-hidden rounded-xl border border-stone-200 bg-white p-1.5 opacity-0 shadow-xl scale-95 transition-all duration-200 pointer-events-none data-[open=true]:opacity-100 data-[open=true]:scale-100 data-[open=true]:pointer-events-auto">
+        {# `fixed` (not `absolute`) so the panel escapes any ancestor's
+           `overflow: hidden` — e.g. a modal `<dialog>` — instead of
+           being clipped by it. Top/left/width/bottom/max-height are
+           computed at runtime by `#positionListbox()` in
+           custom_select.js from the trigger's `getBoundingClientRect()`
+           and the remaining viewport space; nothing here anchors the
+           panel positionally besides `fixed` itself. `overflow-y-auto`
+           (rather than `overflow-hidden` on both axes) lets a long
+           option list scroll internally instead of running past the
+           edge of the screen — `overflow-x-hidden` keeps the rounded
+           corners clipped the same way `overflow-hidden` used to.
+           `list-none` is a defensive backstop against bullets in case
+           Tailwind Preflight's `<ul>` reset ever doesn't apply here. #}
+        class="fixed z-30 list-none origin-top overflow-x-hidden overflow-y-auto rounded-xl border border-stone-200 bg-white p-1.5 opacity-0 shadow-xl scale-95 transition-all duration-200 pointer-events-none data-[open=true]:opacity-100 data-[open=true]:scale-100 data-[open=true]:pointer-events-auto">
         {% if _filter %}
             <li class="sticky top-0 mb-1.5 bg-white pb-1.5">
                 <input type="search"
@@ -218,7 +245,19 @@
                        class="block w-full rounded-md border border-stone-300 bg-white px-2.5 py-1.5 text-sm text-stone-900 placeholder-stone-400 focus:border-stone-900 focus:outline-none focus:ring-2 focus:ring-stone-900/20">
             </li>
         {% endif %}
-        {% if _multiple %}
+        {# Multi-select: a single "Select all / Deselect all" action
+           at the top of the listbox, opt-in via `select_all: true`
+           (off by default — most multi-selects skip this row). When
+           every option is already selected it becomes "Deselect
+           all"; otherwise it stays "Select all" and clicking it
+           picks every visible option. Driven entirely by JS in
+           custom_select.js. The label and aria-pressed state are
+           recomputed on every selection change.
+
+           The two translated labels are stashed on
+           `data-label-select` / `data-label-deselect` so the JS can
+           swap them without needing access to the translator. #}
+        {% if _select_all %}
             {% set _all_selected = options|length > 0 and options|map(o => o.value)|filter(v => v in _selected_values)|length == options|length %}
             {% set _label_select    = 'app.shared.custom_select.select_all'|trans %}
             {% set _label_deselect  = 'app.shared.custom_select.deselect_all'|trans %}
@@ -243,6 +282,14 @@
             </li>
         {% endif %}
         {% for o in options %}
+            {# The single-select placeholder (`is_placeholder: true`,
+               when a caller merges one into `options`) is skipped
+               here — it's not a real choice, just the
+               "nothing selected" fallback label — so it never shows
+               up as a clickable/checkable row. It's still present in
+               `options` so the hidden native `<select>` below gets
+               its `<option value="">` default. #}
+            {% if not (o.is_placeholder is defined and o.is_placeholder) %}
             {% set is_selected = (o.value in _selected_values) %}
             <li role="option"
                 data-select-option
@@ -270,6 +317,7 @@
                 {% endif %}
                 <span class="flex-1 truncate" data-select-option-label>{{ o.label }}</span>
             </li>
+            {% endif %}
         {% endfor %}
     </ul>
 

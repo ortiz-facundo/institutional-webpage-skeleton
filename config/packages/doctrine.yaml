@@ -18,6 +18,14 @@ doctrine:
                 dir: '%kernel.project_dir%/src/Entity'
                 prefix: 'App\Entity'
                 alias: App
+        # Custom DQL functions. `IFNULL` is MariaDB/MySQL-native — useful
+        # for pushing NULL aggregates to the end of an ORDER BY without a
+        # CASE WHEN aggregate (which MariaDB rejects in some contexts).
+        # Add `COALESCE` here too if a future query needs engine-portable
+        # NULL handling.
+        dql:
+            string_functions:
+                IFNULL: App\Doctrine\Query\AST\FunctionNode\IfnullFunction
 
 when@test:
     doctrine:

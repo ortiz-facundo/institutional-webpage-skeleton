@@ -8,6 +8,7 @@
       @var entity_label      string       e.g. 'User', 'Role'
       @var new_path          ?string
       @var new_label         string
+      @var new_permission    ?string   permission required to see it, or null (default) for unrestricted
       @var total             int|null     when set, the count line uses
                                            the paginated "Showing X–Y of
                                            Z" copy (when has_any_filter);
@@ -42,7 +43,7 @@
             {% endif %}
         </p>
     </div>
-    {% if new_path is defined and new_path %}
+    {% if new_path is defined and new_path and (new_permission|default(null) is null or is_granted(new_permission)) %}
         <a href="{{ path(new_path) }}"
            class="inline-flex items-center gap-2 rounded-md bg-stone-900 px-4 py-2 text-sm font-medium text-stone-50 shadow-sm hover:bg-stone-800 focus:outline-none focus:ring-2 focus:ring-amber-600 focus:ring-offset-2">
             <span aria-hidden="true">+</span>

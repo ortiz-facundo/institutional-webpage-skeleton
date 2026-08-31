@@ -205,6 +205,15 @@ abstract class AbstractCrudController extends AbstractController
     }
 
     /**
+     * Permission required to see the "New" button on the list page, or
+     * null (default) for unrestricted.
+     */
+    protected function getNewPermission(): ?string
+    {
+        return null;
+    }
+
+    /**
      * Permission required to see the view button, or null (default) for
      * unrestricted — every row that reaches the list can be viewed.
      */
@@ -514,6 +523,7 @@ abstract class AbstractCrudController extends AbstractController
             'entity_label'       => $this->getEntityLabel(),
             'new_path'           => $this->getRoutePrefix() . '_new',
             'new_label'          => $newLabel,
+            'new_permission'     => $this->getNewPermission(),
             'view_path'          => $this->getRoutePrefix() . '_view',
             'view_permission'    => $this->getViewPermission(),
             'edit_path'          => $this->getRoutePrefix() . '_edit',

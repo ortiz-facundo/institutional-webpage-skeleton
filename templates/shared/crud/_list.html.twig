@@ -23,6 +23,7 @@
       @var empty_message     string
       @var entity_label      string       e.g. 'User', 'Role'
       @var show_actions      bool         default true
+      @var new_permission    ?string      permission required to see the "New" button, or null
       @var view_path         ?string      per-row view route name
       @var view_permission   ?string
       @var edit_path         ?string      per-row edit route name
@@ -76,7 +77,8 @@
         {% include 'shared/crud/_empty_state.html.twig' with {
             message: empty_message|default('app.administration.crud.empty'|trans({'%entity%': entity_label|default('item')|lower})),
             action_path: new_path|default(null),
-            action_label: new_label|default('app.administration.crud.create'|trans)
+            action_label: new_label|default('app.administration.crud.create'|trans),
+            action_permission: new_permission|default(null)
         } %}
     {% endif %}
 {% else %}

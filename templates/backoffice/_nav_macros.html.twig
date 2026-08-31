@@ -21,21 +21,41 @@
     item and renders nothing (no <h2>, no rule) if no items remain for
     the current user. A ROLE_USER with no MANAGE_* permissions sees no
     "Administration" group at all.
+
+    Permission field grammar (see `nav_item_is_visible`):
+      - `null`              → always visible.
+      - "PERM_FOO"          → visible iff `is_granted(PERM_FOO)`.
+      - "PERM_A||PERM_B"    → visible iff `is_granted(PERM_A) OR
+                              is_granted(PERM_B)`. The `||` is the
+                              only connective currently supported;
+                              extend `nav_item_is_visible` if you
+                              need `&&` (AND) or unary negation.
+      Operators are space-tolerant ("PERM_A || PERM_B" works). The
+      presence of `||` activates the split; a single string with no
+      `||` is treated as one permission.
 #}
 
 {# @var item array {
         label:        string,
         route:        string,   route name (for path())
         route_prefix: string,   used for active-state matching via `starts with`
-        permission:   string|null,   App\Security\Permission::* constant name (without prefix)
+        permission:   string|null,   App\Security\Permission::* constant name
+                                       (without prefix); use `||` for OR
         icon:         string,   key passed to icon_d()
     }
    @var current_route string #}
 {% macro nav_item_is_visible(item) -%}
     {%- if item.permission is null -%}
         1
-    {%- elseif is_granted(constant('App\\Security\\Permission::' ~ item.permission)) -%}
-        1
+    {%- else -%}
+        {%- set visible = 0 -%}
+        {%- for raw in item.permission|split('||') -%}
+            {%- set perm = raw|trim -%}
+            {%- if perm is not empty and is_granted(constant('App\\Security\\Permission::' ~ perm)) -%}
+                {%- set visible = 1 -%}
+            {%- endif -%}
+        {%- endfor -%}
+        {%- if visible == 1 -%}1{%- endif -%}
     {%- endif -%}
 {%- endmacro %}
 
