@@ -10,7 +10,13 @@
         label:        string,                              link text
         route:        string,                              Symfony route name (for path())
         route_prefix: string,                              prefix used for active-state matching
-                                                          via `current_route starts with route_prefix`
+                                                          via `current_route starts with route_prefix`.
+                                                          MUST be the Symfony route-name prefix
+                                                          (e.g. 'administration_user'), NOT the
+                                                          URL-path prefix (e.g. '/admin/users').
+                                                          Per project convention, route names use
+                                                          the full module word even when URL paths
+                                                          use a shorter prefix.
         permission:   string|null,                         App\Security\Permission::* constant
                                                           name WITHOUT the class prefix (e.g.
                                                           'PERMISSION_MANAGE_USERS'). null =
@@ -70,21 +76,21 @@
             {
                 label: 'app.backoffice.nav.users'|trans,
                 route: 'administration_user_list',
-                route_prefix: 'admin_user',
+                route_prefix: 'administration_user',
                 permission: 'PERMISSION_MANAGE_USERS',
                 icon: 'users',
             },
             {
                 label: 'app.backoffice.nav.roles'|trans,
                 route: 'administration_role_list',
-                route_prefix: 'admin_role',
+                route_prefix: 'administration_role',
                 permission: 'PERMISSION_MANAGE_ROLES',
                 icon: 'shield',
             },
             {
                 label: 'app.backoffice.nav.permissions'|trans,
                 route: 'administration_permission_list',
-                route_prefix: 'admin_permission',
+                route_prefix: 'administration_permission',
                 permission: 'PERMISSION_MANAGE_PERMISSIONS',
                 icon: 'key',
             },
