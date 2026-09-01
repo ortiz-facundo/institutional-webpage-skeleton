@@ -12,12 +12,10 @@ app:
                 no_roles: 'No tienes roles asignados'
         menu:
             group:
-                account: 'Cuenta'
                 security: 'Seguridad'
                 preferences: 'Preferencias'
                 danger_zone: 'Zona peligrosa'
             item:
-                edit_profile: 'Editar perfil'
                 change_password: 'Cambiar contraseña'
                 active_sessions: 'Sesiones activas'
                 two_factor: 'Autenticación de dos factores'
@@ -29,6 +27,23 @@ app:
         index:
             settings: 'Configuración'
             select_hint: 'Selecciona una opción de configuración.'
+        edit_profile:
+            photo:
+                edit: 'Editar foto'
+                remove: 'Quitar foto'
+                remove_confirm:
+                    title: '¿Quitar la foto de perfil?'
+                    description: 'Esta acción no se puede deshacer. Tendrás que subir una foto nueva para volver a tener una.'
+                    confirm: 'Quitar'
+            crop:
+                title: 'Recorta tu foto'
+                description: 'Arrastra para reposicionar, usa el control deslizante para hacer zoom.'
+                zoom: 'Zoom'
+                cancel: 'Cancelar'
+                save: 'Guardar'
+            flash:
+                updated: 'Foto de perfil actualizada.'
+                removed: 'Foto de perfil eliminada.'
         change_password:
             title: 'Cambiar contraseña'
             description: 'Elige una nueva contraseña. Necesitarás ingresar la actual para confirmar.'

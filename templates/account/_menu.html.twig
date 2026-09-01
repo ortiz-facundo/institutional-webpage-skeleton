@@ -22,12 +22,6 @@
 {% set current_route = current_route|default(app.request.attributes.get('_route')) %}
 {% set groups = [
     {
-        label: 'app.account.menu.group.account'|trans,
-        items: [
-            {label: 'app.account.menu.item.edit_profile'|trans, route: 'account_profile_settings_edit_profile', enabled: false},
-        ],
-    },
-    {
         label: 'app.account.menu.group.security'|trans,
         items: [
             {label: 'app.account.menu.item.change_password'|trans, route: 'account_change_password', enabled: true},

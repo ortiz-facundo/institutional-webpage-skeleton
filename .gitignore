@@ -20,3 +20,8 @@ node_modules/
 ###> symfony/asset ###
 /public/build/
 ###< symfony/asset ###
+
+# Self-service avatar uploads (vich/uploader-bundle) — keep the
+# directory tracked, ignore its contents.
+/public/uploads/avatars/*
+!/public/uploads/avatars/.gitkeep

@@ -231,5 +231,8 @@
             "config/packages/web_profiler.yaml",
             "config/routes/web_profiler.yaml"
         ]
+    },
+    "vich/uploader-bundle": {
+        "version": "v2.10.0"
     }
 }

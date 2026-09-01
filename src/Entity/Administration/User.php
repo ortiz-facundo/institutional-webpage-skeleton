@@ -10,8 +10,10 @@ use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Bridge\Doctrine\Validator\Constraints\UniqueEntity;
+use Symfony\Component\HttpFoundation\File\File;
 use Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface;
 use Symfony\Component\Security\Core\User\UserInterface;
+use Vich\UploaderBundle\Mapping\Attribute as Vich;
 
 #[ORM\Entity(repositoryClass: UserRepository::class)]
 #[ORM\Table(name: 'app_user')]
@@ -19,6 +21,7 @@ use Symfony\Component\Security\Core\User\UserInterface;
     fields: ['email'],
     message: 'app.user.email.duplicate',
 )]
+#[Vich\Uploadable]
 class User implements UserInterface, PasswordAuthenticatedUserInterface
 {
     /**
@@ -72,6 +75,34 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
      */
     #[ORM\Column(name: 'locale', type: 'string', length: 5, nullable: true)]
     private ?string $locale = null;
+
+    /**
+     * Transient — never persisted directly. Set by VichImageType when the
+     * self-service "Edit profile" form is submitted; Vich's Doctrine
+     * listener reads it during flush, moves the file into the `avatar`
+     * mapping's destination (see config/packages/vich_uploader.yaml), and
+     * writes the generated name/size back into $avatarFilename/$avatarSize.
+     */
+    #[Vich\UploadableField(mapping: 'avatar', fileNameProperty: 'avatarFilename', size: 'avatarSize')]
+    private ?File $avatarFile = null;
+
+    #[ORM\Column(name: 'avatar_filename', type: 'string', length: 255, nullable: true)]
+    private ?string $avatarFilename = null;
+
+    #[ORM\Column(name: 'avatar_size', type: 'integer', nullable: true)]
+    private ?int $avatarSize = null;
+
+    /**
+     * Touched by setAvatarFile() whenever a new file is set. Doctrine only
+     * fires its preUpdate event (which Vich's listener relies on to move
+     * the file and populate $avatarFilename) for entities that already
+     * have a mapped-column change in the current changeset — $avatarFile
+     * itself isn't ORM-mapped, so without this column an upload replacing
+     * an existing photo on an already-persisted User would be silently
+     * dropped on flush.
+     */
+    #[ORM\Column(name: 'avatar_updated_at', type: 'datetime_immutable', nullable: true)]
+    private ?\DateTimeImmutable $avatarUpdatedAt = null;
 
     /** @var Collection<int, Role> */
     #[ORM\ManyToMany(targetEntity: Role::class, inversedBy: 'users')]
@@ -198,6 +229,48 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
         return $this;
     }
 
+    public function setAvatarFile(?File $avatarFile = null): self
+    {
+        $this->avatarFile = $avatarFile;
+        if ($avatarFile !== null) {
+            $this->avatarUpdatedAt = new \DateTimeImmutable();
+        }
+        return $this;
+    }
+
+    public function getAvatarFile(): ?File
+    {
+        return $this->avatarFile;
+    }
+
+    public function getAvatarFilename(): ?string
+    {
+        return $this->avatarFilename;
+    }
+
+    /**
+     * Written by Vich's upload listener via PropertyAccessor during flush
+     * (see UploadableField's fileNameProperty) — not meant to be called
+     * directly from application code.
+     */
+    public function setAvatarFilename(?string $avatarFilename): self
+    {
+        $this->avatarFilename = $avatarFilename;
+        return $this;
+    }
+
+    public function getAvatarSize(): ?int
+    {
+        return $this->avatarSize;
+    }
+
+    /** Written by Vich's upload listener via PropertyAccessor (see UploadableField's `size`). */
+    public function setAvatarSize(?int $avatarSize): self
+    {
+        $this->avatarSize = $avatarSize;
+        return $this;
+    }
+
     /**
      * Whether this user is allowed to authenticate through the login
      * firewall. Only USER_STATE_ACTIVE users pass — Pending users have
@@ -257,5 +330,22 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
 
     public function eraseCredentials(): void
     {
+    }
+
+    /**
+     * Excludes the transient $avatarFile (a File instance while a photo
+     * upload is being processed by VichImageType/UploadListener) from
+     * PHP's native serialize(), which Symfony's session storage uses to
+     * persist the security token on every request. File objects refuse
+     * serialization ("Serialization of ... File is not allowed"), so
+     * without this override the edit-profile page — success or
+     * validation failure — would 500 as soon as a file is bound to the
+     * form.
+     *
+     * @return list<string>
+     */
+    public function __sleep(): array
+    {
+        return array_diff(array_keys(get_object_vars($this)), ['avatarFile']);
     }
 }

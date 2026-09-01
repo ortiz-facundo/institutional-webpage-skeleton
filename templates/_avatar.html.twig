@@ -1,6 +1,8 @@
-{# Initials-avatar partial. Reused by the sidebar footer chip and the
-   self-service profile page so the colour + initials are computed in one
-   place (UserAvatarExtension).
+{# Avatar partial. Reused by the sidebar footer chip and the self-service
+   profile page. Renders the user's uploaded photo (avatarFilename, set
+   via vich/uploader-bundle on /account/profile-settings/edit-profile)
+   when there is one; otherwise falls back to the initials placeholder
+   (colour + initials computed by UserAvatarExtension).
 
    Contract:
      @var user  App\Entity\Administration\User  the user to render an avatar for
@@ -10,9 +12,13 @@
    same user always gets the same colour across pages and refreshes.
    Initials: first two chars of `name`, fallback to first two chars of
    `email`. Uppercased.
-
-   No external assets, no DB column — purely visual placeholder.
 #}
 {% set dim = size == 'lg' ? 'h-24 w-24 text-2xl' : 'h-10 w-10 text-sm' %}
-<span class="flex {{ dim }} shrink-0 items-center justify-center rounded-full bg-{{ user_avatar_color(user) }} font-semibold text-stone-50 select-none"
-      aria-hidden="true">{{ user_initials(user) }}</span>
+{% if user.avatarFilename %}
+    <img src="{{ asset('uploads/avatars/' ~ user.avatarFilename) }}"
+         alt=""
+         class="flex {{ dim }} shrink-0 rounded-full object-cover select-none">
+{% else %}
+    <span class="flex {{ dim }} shrink-0 items-center justify-center rounded-full bg-{{ user_avatar_color(user) }} font-semibold text-stone-50 select-none"
+          aria-hidden="true">{{ user_initials(user) }}</span>
+{% endif %}

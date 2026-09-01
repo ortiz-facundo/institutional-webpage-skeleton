@@ -30,6 +30,12 @@ app:
             new_required: 'Pick a new password.'
             min: 'Password must be at least %limit% characters.'
             mismatch: 'Passwords do not match.'
+        edit_profile:
+            # Profile-photo upload self-service form.
+            photo:
+                too_large: 'The photo must be no larger than %limit%.'
+                invalid_type: 'Please upload a JPG, PNG, or WEBP image.'
+                invalid_ratio: 'The photo must be square. Use the crop tool on the edit-profile page.'
     security:
         # Account confirmation form (first-time password set).
         password:

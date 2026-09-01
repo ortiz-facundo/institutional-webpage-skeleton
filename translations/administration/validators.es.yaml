@@ -21,6 +21,11 @@ app:
             new_required: 'Elige una nueva contraseña.'
             min: 'La contraseña debe tener al menos %limit% caracteres.'
             mismatch: 'Las contraseñas no coinciden.'
+        edit_profile:
+            photo:
+                too_large: 'La foto no puede superar %limit%.'
+                invalid_type: 'Sube una imagen en formato JPG, PNG o WEBP.'
+                invalid_ratio: 'La foto debe ser cuadrada. Usa la herramienta de recorte en la página de editar perfil.'
     security:
         password:
             required: 'Elige una contraseña.'

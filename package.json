@@ -16,5 +16,8 @@
     "tailwindcss": "^3.4.19",
     "vite": "^5.4.21",
     "vite-plugin-symfony": "^8.2.4"
+  },
+  "dependencies": {
+    "cropperjs": "^1.6.3"
   }
 }
