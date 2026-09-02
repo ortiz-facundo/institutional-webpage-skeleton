@@ -6,14 +6,15 @@
 
    Contract:
      @var user  App\Entity\Administration\User  the user to render an avatar for
-     @var size  string           'sm' (default, h-10 w-10) or 'lg' (h-24 w-24)
+     @var size  string           'xs' (h-6 w-6), 'sm' (default, h-10 w-10),
+                                  or 'lg' (h-24 w-24)
 
    Colour is deterministic per email (crc32 mod palette length) so the
    same user always gets the same colour across pages and refreshes.
    Initials: first two chars of `name`, fallback to first two chars of
    `email`. Uppercased.
 #}
-{% set dim = size == 'lg' ? 'h-24 w-24 text-2xl' : 'h-10 w-10 text-sm' %}
+{% set dim = size == 'lg' ? 'h-24 w-24 text-2xl' : (size == 'xs' ? 'h-6 w-6 text-xs' : 'h-10 w-10 text-sm') %}
 {% if user.avatarFilename %}
     <img src="{{ asset('uploads/avatars/' ~ user.avatarFilename) }}"
          alt=""

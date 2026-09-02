@@ -57,8 +57,8 @@ final class UserController extends AbstractCrudController
     protected function getListColumns(): array
     {
         return [
+            ['label' => $this->translator->trans('app.administration.columns.user.name'),  'path' => 'name', 'sortable' => true, 'cell_partial' => 'administration/user/_name_cell.html.twig'],
             ['label' => $this->translator->trans('app.administration.columns.user.email'), 'path' => 'email', 'sortable' => true],
-            ['label' => $this->translator->trans('app.administration.columns.user.name'),  'path' => 'name', 'sortable' => true],
             ['label' => $this->translator->trans('app.administration.columns.user.state'), 'path' => 'state', 'cell_partial' => '_state_pill.html.twig'],
         ];
     }
