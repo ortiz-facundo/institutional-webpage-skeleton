@@ -50,6 +50,8 @@
    why PHP 8.4 and not 8.3, why no named volumes for vendor/var).
 5. `.opencode/skills/frontend-design/SKILL.md` — full aesthetic guidance.
    **Required reading before any UI work.**
+6. `HARNESS.md` — the planner/builder Herdr workflow, when running as
+   part of the two-agent dev harness.
 
 ---
 
