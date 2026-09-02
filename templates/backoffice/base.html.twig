@@ -8,7 +8,11 @@
        names the original admin and offers an "Exit impersonation" button
        so it's impossible to forget you're impersonating. #}
     {% if is_impersonating() %}
-        <div class="border-b-2 border-amber-400 bg-amber-100 px-6 py-2.5 text-sm text-amber-900">
+        {# `relative z-50` keeps the banner above the mobile backdrop
+           (z-30) and the off-canvas drawer (z-40) when both are
+           shown, so the "Exit impersonation" affordance stays
+           reachable on every viewport size. #}
+        <div class="relative z-50 border-b-2 border-amber-400 bg-amber-100 px-6 py-2.5 text-sm text-amber-900">
             <div class="mx-auto flex max-w-7xl items-center justify-between">
                 <span>
                     <strong>{{ 'app.backoffice.impersonation.active'|trans }}</strong>
@@ -26,9 +30,44 @@
         </div>
     {% endif %}
 
+    {# Backdrop overlay: hidden by default, shown by
+       `assets/js/sidebar-toggle.js` when the mobile drawer is open.
+       Sits behind the drawer (z-40) but above everything else
+       (z-30) so tapping it closes the drawer. `lg:hidden` so it
+       never appears once the sidebar is statically visible.
+       Placed as a sibling to the flex wrapper so it covers the
+       whole viewport (incl. the impersonation banner — see the
+       `relative z-50` on the banner above, which keeps that
+       critical affordance above the backdrop). #}
+    <div data-sidebar-backdrop
+         class="fixed inset-0 z-30 hidden bg-stone-900/50 lg:hidden"
+         aria-hidden="true"></div>
+
     <div class="flex min-h-screen bg-stone-50">
         {% include 'backoffice/_sidebar.html.twig' with {current_route: app.request.attributes.get('_route')} %}
         <main class="flex-1 overflow-y-auto">
+            {# Mobile-only top bar: hamburger + wordmark. `lg:hidden`
+               so it disappears once the sidebar is statically
+               visible. Sticky at the top of <main> so the
+               hamburger stays reachable as the page scrolls.
+               z-20 sits below the backdrop (z-30) and the drawer
+               (z-40) so the open-drawer overlay covers it. #}
+            <div class="sticky top-0 z-20 flex h-16 items-center gap-3 border-b border-stone-200 bg-white px-6 lg:hidden">
+                <button type="button" data-sidebar-toggle
+                        aria-label="{{ 'app.backoffice.nav.open_menu'|trans }}"
+                        title="{{ 'app.backoffice.nav.open_menu'|trans }}"
+                        class="inline-flex h-9 w-9 items-center justify-center rounded-md text-stone-500 hover:bg-stone-100 hover:text-stone-900 focus:outline-none focus:ring-2 focus:ring-amber-600 focus:ring-offset-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                         stroke-width="1.5" stroke="currentColor" aria-hidden="true" class="h-6 w-6">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+                    </svg>
+                </button>
+                <div class="flex items-center gap-2">
+                    <span aria-hidden="true" class="text-xl">🛠</span>
+                    <span class="font-serif text-lg text-stone-900">Skeleton</span>
+                </div>
+            </div>
+
             <div class="mx-auto max-w-6xl px-8 py-8">
                 {% for label, messages in app.flashes %}
                     {% for message in messages %}

@@ -21,6 +21,8 @@ app:
             roles: 'Roles'
             permissions: 'Permissions'
             administration: 'Administration'
+            close_menu: 'Close menu'
+            open_menu: 'Open menu'
         dashboard:
             welcome: 'Welcome, %name%'
             signed_in_as: 'Signed in as %email%'
