@@ -10,6 +10,7 @@
 
 app:
     shared:
+        dismiss: 'Dismiss'
         state:
             USER_STATE_ACTIVE: 'Active'
             USER_STATE_PENDING: 'Pending'

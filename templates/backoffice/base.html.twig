@@ -69,14 +69,7 @@
             </div>
 
             <div class="mx-auto max-w-6xl px-8 py-8">
-                {% for label, messages in app.flashes %}
-                    {% for message in messages %}
-                        {% set color = label == 'error' ? 'rose' : (label == 'success' ? 'emerald' : 'stone') %}
-                        <div class="mb-4 rounded-md border border-{{ color }}-200 bg-{{ color }}-50 p-3 text-sm text-{{ color }}-800">
-                            {{ message }}
-                        </div>
-                    {% endfor %}
-                {% endfor %}
+                {% include 'shared/_flash_messages.html.twig' %}
 
                 {% block admin_body %}{% endblock %}
             </div>

@@ -3,6 +3,7 @@
 
 app:
     shared:
+        dismiss: 'Descartar'
         state:
             USER_STATE_ACTIVE: 'Activo'
             USER_STATE_PENDING: 'Pendiente'

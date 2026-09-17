@@ -59,6 +59,11 @@ final class LocaleController extends AbstractController
             $user->setLocale($newLocale);
             $this->em->flush();
 
+            // Translate the confirmation in the language just selected,
+            // rather than the language of the request that submitted it.
+            $request->setLocale($newLocale);
+            $this->translator->setLocale($newLocale);
+
             $this->addFlash('success', $this->translator->trans('app.account.locale.saved'));
             return $this->redirectToRoute('account_profile_settings');
         }
