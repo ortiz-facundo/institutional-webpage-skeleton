@@ -393,6 +393,68 @@ agent) decides when to sync.
 
 ---
 
+## Skeleton proposals (engram)
+
+Downstream work that could improve the skeleton is recorded as a
+**skeleton proposal** in [engram](https://github.com/Gentleman-Programming/engram)
+memory, so it can be reviewed later from the skeleton. The memory store is
+local to the developer's machine (`~/.engram/`) and shared by all projects;
+each proposal lives in the project it came from.
+
+### When to save one (downstream projects)
+
+After a change in a downstream is finished, save a proposal if it touches a
+**shared module** (Account, Administration, Backoffice, Security,
+`AbstractCrudController` / `CrudListQueryTrait`, `templates/shared/`, the form
+theme, shared translations) or a **frontend utility** (`assets/`,
+`tailwind.config.js`, `vite.config.js`, reusable Twig partials). Changes that
+only touch domain modules (catalog, inventory, sales, homepage, contact, …)
+are not proposals. The user can also ask for one at any time ("register this
+as a skeleton proposal"). Don't save proposals for work that came *from* the
+skeleton through a sync.
+
+Save it with `mem_save`, in the downstream's own project:
+
+- `type`: `proposal`
+- `topic_key`: `skeleton-proposal/<slug>` — kebab-case feature name. Saving
+  the same key again updates the proposal instead of duplicating it.
+- `title`: `Skeleton proposal: <short feature name>`
+- `content`:
+
+  ```
+  **State**: pending
+  **What**: what the change does
+  **Why generic**: which shared module / frontend utility it touches and why other projects benefit
+  **Commits**: <sha …>   (or "uncommitted")
+  **Where**: main files
+  ```
+
+Never put client or business data (customers, prices) in a proposal — code
+facts only.
+
+### States
+
+| State | Meaning |
+|---|---|
+| `pending` | Proposed, not reviewed yet |
+| `implemented (skeleton <sha>)` | Generalized into the skeleton by that commit |
+| `discarded (<reason>)` | Reviewed and rejected |
+
+Change the state with `mem_update` on the proposal's id, replacing the
+`**State**:` line (`find: "**State**: pending"`, `replace: "**State**:
+discarded (…)"`). Only `pending` proposals show up in reviews.
+
+### Reviewing proposals (skeleton)
+
+- **With an agent:** run `/skeleton-proposals` in a session opened in the
+  skeleton repo. It lists every pending proposal from all downstreams, walks
+  through them with you, and records each decision. When one is implemented,
+  the skeleton commit gets the `Source: <downstream>` trailer (see
+  `BRANCHING.md`).
+- **From the terminal, no agent:** `engram search pending --type proposal --all`
+
+---
+
 ## Shared Twig CRUD base
 
 Every entity that needs full CRUD (list, new, edit, delete) reuses these
@@ -1006,4 +1068,7 @@ the icon map location).
    the skeleton. If it's domain-specific (a public homepage, a contact
    form, catalog, inventory, production, sales, HR, accounting), it
    belongs in a downstream. Stop and ask the user if you're unsure.
+   In a downstream, if it touches a shared module or a frontend utility,
+   save a skeleton proposal in engram (see "Skeleton proposals (engram)"
+   above).
 8. **Do not commit.** Stop, summarize what you did, and let the user commit.
