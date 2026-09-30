@@ -2,7 +2,7 @@
    translated via the `trans()` filter; the user's locale determines
    which messages.<locale>.yaml file is consulted. #}
 <!DOCTYPE html>
-<html lang="{{ app.request.locale }}">
+<html lang="{{ email_locale }}">
 <head>
     <meta charset="UTF-8">
     <title>{{ 'email.confirmation.subject'|trans }}</title>

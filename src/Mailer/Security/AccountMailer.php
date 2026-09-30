@@ -29,14 +29,17 @@ final class AccountMailer
 
     public function sendConfirmation(User $user, string $confirmationUrl, int $expiresInHours = 48): void
     {
+        $locale = $this->localeFor($user);
         $email = (new TemplatedEmail())
             ->from(new Address($_ENV['MAILER_FROM'] ?? 'no-reply@example.com', $_ENV['MAILER_FROM_NAME'] ?? 'Skeleton'))
             ->to(new Address($user->getEmail(), $user->getName() ?? $user->getEmail()))
-            ->subject($this->translator->trans('email.confirmation.subject'))
+            ->subject($this->translator->trans('email.confirmation.subject', [], null, $locale))
+            ->locale($locale)
             ->htmlTemplate('security/emails/confirmation.html.twig')
             ->textTemplate('security/emails/confirmation.txt.twig')
             ->context([
                 'user'             => $user,
+                'email_locale'     => $locale,
                 'confirmation_url' => $confirmationUrl,
                 'expires_in_hours' => $expiresInHours,
             ]);
@@ -46,30 +49,40 @@ final class AccountMailer
 
     public function sendActivated(User $user): void
     {
+        $locale = $this->localeFor($user);
         $email = (new TemplatedEmail())
             ->from(new Address($_ENV['MAILER_FROM'] ?? 'no-reply@example.com', $_ENV['MAILER_FROM_NAME'] ?? 'Skeleton'))
             ->to(new Address($user->getEmail(), $user->getName() ?? $user->getEmail()))
-            ->subject($this->translator->trans('email.activated.subject'))
+            ->subject($this->translator->trans('email.activated.subject', [], null, $locale))
+            ->locale($locale)
             ->htmlTemplate('security/emails/activated.html.twig')
             ->textTemplate('security/emails/activated.txt.twig')
-            ->context(['user' => $user]);
+            ->context(['user' => $user, 'email_locale' => $locale]);
 
         $this->mailer->send($email);
     }
 
     public function sendDisabled(User $user, ?string $reason): void
     {
+        $locale = $this->localeFor($user);
         $email = (new TemplatedEmail())
             ->from(new Address($_ENV['MAILER_FROM'] ?? 'no-reply@example.com', $_ENV['MAILER_FROM_NAME'] ?? 'Skeleton'))
             ->to(new Address($user->getEmail(), $user->getName() ?? $user->getEmail()))
-            ->subject($this->translator->trans('email.disabled.subject'))
+            ->subject($this->translator->trans('email.disabled.subject', [], null, $locale))
+            ->locale($locale)
             ->htmlTemplate('security/emails/disabled.html.twig')
             ->textTemplate('security/emails/disabled.txt.twig')
             ->context([
                 'user'   => $user,
                 'reason' => $reason,
+                'email_locale' => $locale,
             ]);
 
         $this->mailer->send($email);
+    }
+
+    private function localeFor(User $user): string
+    {
+        return $user->getLocale() ?? 'es';
     }
 }

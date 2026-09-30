@@ -12,19 +12,14 @@ use Doctrine\Persistence\ObjectRepository;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 
 /**
- * Dev seed users. Two accounts are created:
+ * Dev seed user. One account is created:
  *   - `test@skeleton.local` / `test` — ROLE_ADMIN. The original test
  *     user; safe to load in dev and test.
- *   - `manager@skeleton.local` / `manager` — ROLE_MANAGER. Smoke-test
- *     the manager tier: can create users and edit roles, but cannot
- *     grant admin permissions to anyone (enforced by the
- *     OnlyAdminCanGrantAdminRole / OnlyAdminCanGrantAdminPermission
- *     validators on UserType and RoleType).
  *
- * Both emails use the skeleton.local domain so downstream projects can
+ * The email uses the skeleton.local domain so downstream projects can
  * safely re-seed without colliding with production addresses. The
  * fixtures bundle is only registered for dev/test in bundles.php, so
- * neither user can leak into prod. Override per-project by editing this
+ * this user cannot leak into prod. Override per-project by editing this
  * fixture or by replacing the users with the project's own rows in
  * /admin/users.
  */
@@ -41,8 +36,6 @@ class UserFixtures extends Fixture
         $repo = $manager->getRepository(User::class);
 
         $this->ensureUser($manager, $repo, email: 'test@skeleton.local', name: 'Test User', password: 'test', roleName: 'ROLE_ADMIN');
-        $this->ensureUser($manager, $repo, email: 'manager@skeleton.local', name: 'Test Manager', password: 'manager', roleName: 'ROLE_MANAGER');
-
         $manager->flush();
     }
 

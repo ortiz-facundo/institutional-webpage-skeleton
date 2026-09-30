@@ -191,9 +191,9 @@ You should see a plaintext page that prints the progress of:
    on shared hosts.
 4. `cache:warmup --env=prod --no-debug` — pre-compiles the prod cache.
 5. `assets:install` — no-op for Vite, but kept for parity.
-6. `app:deploy:seed-prod` — creates baseline roles (ROLE_ADMIN,
-   ROLE_USER) and, if `PROD_ADMIN_EMAIL` is set, creates the initial
-   backoffice admin user as **Pending** + emails a confirmation link.
+6. `app:deploy:seed-prod` — creates or synchronizes the two baseline roles
+   (`ROLE_ADMIN` and `ROLE_USER`) and, if `PROD_ADMIN_EMAIL` is set, creates
+   the initial backoffice admin user as **Pending** and emails a confirmation link.
 
 When the page ends with `✓ deploy.php has self-deleted.`, the deploy
 is done.
@@ -219,9 +219,10 @@ File Manager) for the full stack trace.
 
 If `PROD_ADMIN_EMAIL` was set in `.env.local`, an admin user is created
 in `USER_STATE_PENDING` and a confirmation link is emailed. The
-confirmation link is **also** logged to `var/log/audit.log` as a
-fallback — download that file via File Manager / FTP to extract the
-link if email delivery fails.
+confirmation URL is written to the audit channel before SMTP delivery,
+so it is recorded even if email sending fails. In production, the audit
+channel is JSON on PHP stderr; retrieve it through the hosting provider's
+PHP/application error log if email delivery fails.
 
 Open the link, pick a password (minimum 5 characters), and the admin
 becomes Active. Then log in at `https://CHANGE_ME_DOMAIN/login` —
@@ -241,8 +242,9 @@ you'll land on `/dashboard`.
   database has roles but no users. You have two options:
   1. **Create a user manually** by inserting into the `app_user` table
      via phpMyAdmin, then use the same confirmation flow.
-  2. **Re-run the seed command** by hitting `deploy.php?key=…` again
-     (after first deleting the failed admin from the DB if any).
+  2. **Re-run the seed command** by hitting `deploy.php?key=…` again.
+     Existing pending admin users get a fresh confirmation token and email;
+     existing active users are left unchanged.
 
 ---
 
@@ -359,19 +361,19 @@ internet, double-check it uses `?verify_peer=0`.
 
 ### Where the deploy installer logs go in prod
 
-In prod, the Monolog config writes two channels to files you can
-download via FTP / File Manager:
+In prod, Monolog writes both channels as JSON to PHP stderr. The hosting
+provider determines where those logs are available (often a PHP or
+application error-log view in cPanel):
 
 | Channel | Path |
 |---|---|
-| Symfony errors (the actual exception that caused a 500) | `var/log/prod.log` |
-| Admin actions (login, state change, confirmation URL) | `var/log/audit.log` |
+| Symfony errors (the actual exception that caused a 500) | JSON on PHP stderr |
+| Admin actions (login, state change, confirmation URL) | JSON on PHP stderr (hosting provider's PHP/application error log) |
 
 If something fails and the only thing you see is a generic "Oops! An
-Error Occurred", `var/log/prod.log` has the full stack trace. The
-confirmation URL is in `var/log/audit.log` even when the SMTP send
-fails — that's how the installer stays recoverable on misconfigured
-hosts.
+Error Occurred", check the hosting provider's PHP/application error log
+for the full stack trace. The confirmation URL is recorded in the audit
+channel before SMTP delivery, including when email sending fails.
 
 ### "The MAILER_DSN is invalid" error from the seed installer
 
@@ -407,7 +409,7 @@ CHANGE_ME_DOMAIN/             ← zip root (or whatever your subdomain's doc roo
 ├── .env                              ← prod-defaults (no real secrets)
 ├── .env.local.template               ← copy this to .env.local
 ├── .env.local                        ← YOU create this (gitignored)
-├── .htaccess                         ← production-hardened top-level rules
+├── .htaccess                         ← production rules; aliases /uploads/ to public/uploads/
 ├── README_DEPLOY.md                  ← this file
 ├── deploy.php                        ← one-shot installer (self-deletes on success)
 ├── index.php                         ← front controller (vendor/ is a sibling)

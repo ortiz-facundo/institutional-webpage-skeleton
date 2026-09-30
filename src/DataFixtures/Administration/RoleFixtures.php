@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\DataFixtures\Administration;
 
-use App\Entity\Administration\Permission;
 use App\Entity\Administration\Role;
 use App\Repository\Administration\PermissionRepository;
 use App\Security\Permission as Perm;
@@ -12,13 +11,8 @@ use Doctrine\Bundle\FixturesBundle\Fixture;
 use Doctrine\Persistence\ObjectManager;
 
 /**
- * Creates the three baseline roles:
+ * Creates the two baseline roles:
  *   - ROLE_ADMIN: every permission in the catalog.
- *   - ROLE_MANAGER: manager-tier. VIEW_BACKOFFICE + MANAGE_USERS +
- *     MANAGE_ROLES. Can create users and edit roles, but cannot grant
- *     admin permissions to anyone (enforced by the
- *     OnlyAdminCanGrantAdminRole / OnlyAdminCanGrantAdminPermission
- *     validators — see App\Security\AdminGrantGuard).
  *   - ROLE_USER: VIEW_BACKOFFICE only (dashboard access).
  * Idempotent: if a role already exists it is updated in place — any
  * newly-added permissions are wired up, so shipping a new permission
@@ -38,16 +32,6 @@ class RoleFixtures extends Fixture
         $this->syncPermissions($admin, Perm::all());
         if ($manager->contains($admin) === false) {
             $manager->persist($admin);
-        }
-
-        $managerRole = $repo->findOneBy(['name' => 'ROLE_MANAGER']) ?? new Role('ROLE_MANAGER');
-        $this->syncPermissions($managerRole, [
-            Perm::PERMISSION_VIEW_BACKOFFICE,
-            Perm::PERMISSION_MANAGE_USERS,
-            Perm::PERMISSION_MANAGE_ROLES,
-        ]);
-        if ($manager->contains($managerRole) === false) {
-            $manager->persist($managerRole);
         }
 
         $user = $repo->findOneBy(['name' => 'ROLE_USER']) ?? new Role('ROLE_USER');

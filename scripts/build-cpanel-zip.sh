@@ -170,15 +170,14 @@ rsync -a \
 
 # Pull only the front-controller bits out of public/ and into the zip
 # root. We deliberately LEAVE the rest of public/ in place (build/,
-# favicon.svg) — the top-level .htaccess aliases /build/ to
-# public/build/. The backoffice templates don't emit any /images/
-# references, so we don't need to alias that. (Vite bundle and asset
+# uploads/, favicon.svg) — the top-level .htaccess aliases /build/ and
+# /uploads/ to their public/ paths. (Vite bundle and asset
 # mapper both default to a public/ base, so keeping that structure
 # intact avoids any code change to Symfony's URL generation.)
 #
 # Concretely: we drop public/index.php and public/.htaccess from dist/
 # (we replace them with patched versions at the zip root) and keep
-# public/build and public/favicon.svg.
+# public/build, public/uploads, and public/favicon.svg.
 echo "==> Removing dist/public/index.php and dist/public/.htaccess"
 rm -f "${DIST}/public/index.php"
 rm -f "${DIST}/public/.htaccess"
@@ -211,10 +210,10 @@ PHP
 #
 # The cPanel document root is fixed at the project root, so this file is
 # what Apache reads first. It aliases the static assets that the Vite
-# bundle expects under /build/ and /favicon.svg — these live under
+# bundle and upload URLs expect under /build/, /uploads/, and /favicon.svg — these live under
 # public/ in this layout because Vite's manifest defaults to a public/
 # base. The alias below redirects /build/ → public/build/ so application
-# code emits the canonical Vite URL and Apache serves the physical file.
+# code emits canonical URLs and Apache serves the physical files.
 #
 # Hardening layered on top of Symfony's stock rules:
 #
@@ -234,19 +233,18 @@ cat > "${DIST}/.htaccess" <<'HTACCESS'
 # the rewrite rules up here because the cPanel doc root is fixed and we
 # cannot point it at public/.
 #
-# The dist layout keeps public/build/ and public/favicon.svg intact
-# (so the Vite bundle keeps working without code changes) and uses
-# Apache rewrite aliases below to make /build/ and /favicon.svg
-# resolve to those physical files.
+# The dist layout keeps public/build/, public/uploads/, and public/favicon.svg
+# intact and uses Apache rewrite aliases below to resolve their canonical URLs.
 
 Options -Indexes +FollowSymLinks +MultiViews
 RewriteEngine On
 DirectoryIndex index.php
 
-# 1. Alias /build/ and /favicon.svg to public/. The L flag stops
+# 1. Alias /build/, /uploads/, and /favicon.svg to public/. The L flag stops
 #    processing here so these serve as static files without recursing
 #    into the front-controller rule below.
 RewriteRule ^build/(.*)$ public/build/$1 [L]
+RewriteRule ^uploads/(.*)$ public/uploads/$1 [L]
 RewriteRule ^favicon\.svg$ public/favicon.svg [L]
 
 # 2. Real files served as-is. We deliberately do NOT match directories
@@ -449,7 +447,7 @@ echo "  3. Copy .env.local.template to .env.local and fill in real values."
 echo "  4. Pick a strong DEPLOY_KEY (e.g. openssl rand -hex 32) and paste it in .env.local."
 echo "  5. Set PHP 8.4 for this folder in MultiPHP Manager."
 echo "  6. Visit https://yourdomain.tld/deploy.php?key=<DEPLOY_KEY>"
-echo "  7. The installer runs migrations, warms the cache, seeds baseline roles,"
+echo "  7. The installer runs migrations, warms the cache, seeds ROLE_ADMIN and ROLE_USER,"
 echo "     creates your initial backoffice admin, and self-deletes deploy.php."
 echo
 echo "Full walkthrough is in README_DEPLOY.md inside the zip."

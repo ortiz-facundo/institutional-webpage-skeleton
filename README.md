@@ -480,8 +480,8 @@ For step-by-step recipes for the most common backend/frontend tasks, see
   - `PERMISSION_MANAGE_ROLES`
   - `PERMISSION_MANAGE_PERMISSIONS`
   - `PERMISSION_IMPERSONATE_USERS`
-- **Roles** are rows in the `role` table. Baseline fixtures seed `ROLE_ADMIN`
-  (all 5 perms) and `ROLE_USER` (view only).
+- **Roles** are rows in the `role` table. Baseline fixtures seed exactly two:
+  `ROLE_ADMIN` (all catalog permissions) and `ROLE_USER` (view only).
 - **Users** carry roles via the `user_role` join table. New users get
   `ROLE_USER` by default; admins reassign via `/admin/users/{id}/edit`.
 - **The permission seed migration** runs `Permission::all()` and inserts one

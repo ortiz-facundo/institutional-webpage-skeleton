@@ -7,6 +7,7 @@ namespace App\Service\Security\UserLifecycle;
 use App\Entity\Administration\User;
 use App\Mailer\Security\AccountMailer;
 use Psr\Log\LoggerInterface;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 
 /**
  * Convenience dispatcher for state transitions.
@@ -27,6 +28,7 @@ final class UserStateTransitionService
         private readonly ChangeUserStateToDisabled $toDisabled,
         private readonly AccountTokenIssuer $tokenIssuer,
         private readonly AccountMailer $mailer,
+        #[Autowire(service: 'monolog.logger.audit')]
         private readonly LoggerInterface $auditLogger,
     ) {
     }
@@ -61,18 +63,20 @@ final class UserStateTransitionService
 
         $token = $this->tokenIssuer->issue($user);
         $url = $this->buildConfirmationUrl($token);
-        $this->mailer->sendConfirmation($user, $url);
 
-        // Audit log: the URL is only useful with the raw secret, and the
-        // secret has just been sent to the user via email. Logging it
-        // here makes it easy to copy-paste in dev where MAILER_DSN is
-        // null://null. In prod the email is the canonical delivery
-        // channel; this log is a backup.
+        // The URL includes the raw secret and is a bearer token. Logging it
+        // here makes it recoverable in dev where MAILER_DSN is null://null,
+        // and in production if SMTP delivery fails. Access to the audit
+        // channel must remain restricted.
         $this->auditLogger->info('user.confirmation.resent', [
             'user_id'   => $user->getId(),
             'user_email'=> $user->getEmail(),
             'url'       => $url,
         ]);
+
+        // Log before attempting delivery so the URL remains recoverable
+        // when the SMTP transport throws during a production seed.
+        $this->mailer->sendConfirmation($user, $url);
     }
 
     public function buildConfirmationUrl(\App\Entity\Security\AccountConfirmationToken $token): string
