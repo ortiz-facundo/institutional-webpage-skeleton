@@ -34,6 +34,7 @@ RUN a2ensite skeleton
 
 COPY docker/php/opcache.ini /usr/local/etc/php/conf.d/zz-opcache.ini
 COPY docker/php/apcu.ini    /usr/local/etc/php/conf.d/apcu.ini
+COPY docker/php/timezone.ini /usr/local/etc/php/conf.d/zz-timezone.ini
 
 RUN set -eux; \
     mkdir -p /var/www/html/var /var/www/html/public; \

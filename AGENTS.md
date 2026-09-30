@@ -715,7 +715,37 @@ widgets. To add a new widget type, add a block override in this file
 using the existing patterns (`form_label`, `form_widget_simple`,
 `choice_widget_expanded`, `checkbox_widget`, `textarea_widget`,
 `form_row`, `form_errors`, `form_label_content`,
-`permission_picker_widget`).
+`permission_picker_widget`, `phone_input_widget`, `tags_input_widget`,
+`select_text_widget`). The `form_row_render` block places errors after
+the field. `color_widget` styles the native HTML5 colour picker; downstream
+entity forms named `Color` should use a distinct block prefix to avoid
+colliding with this Symfony block.
+
+**Reusable inputs and collection rows:** `App\Form\Type\PhoneInputType`
+stores an international digit string and formats via the Twig
+`format_phone_intl()` helper. `App\Form\Type\SelectTextType` renders a
+text-backed `<select>` for page-specific JS to populate at runtime.
+`App\Form\Type\TagsInputType` maps a list of
+strings to a pipe-delimited chip input (tags cannot contain `|`).
+`templates/shared/crud/_collection_table.html.twig` renders an editable
+Symfony `CollectionType`: pass `form`, `collection`, `headers`, and
+`row_template` (a single `<tr data-ctf-row>`). The form collection must set
+`allow_add`, `allow_delete`, and `prototype` where applicable. Row templates
+may use `ctf-remove-row`, `ctf-move-row-up/down`, `.ctf-drag-handle` and
+quantity buttons; JS initializes them from `assets/app.js` and emits
+`ctf:row-added/removed/moved` events. The row order defines submitted
+positions. The shared CustomSelect supports `data-select-filter` on a form
+field's `attr` and `data-option-title` / `data-option-icon` on its
+`choice_attr`. Icons are text (e.g. emoji), not raw SVG markup. Shared
+dismissible cards use `data-controller="dismissible-hint"` and
+`data-action="dismiss-hint"`; an optional stable `data-hint-key` remembers
+the dismissal in localStorage.
+
+**Runtime timezone:** PHP defaults to `America/Argentina/Buenos_Aires`
+via `docker/php/timezone.ini` in the image. Use explicit zones where
+calendar business rules depend on one; rebuild the PHP image after changing
+the ini. This affects implicit `DateTime` creation and Doctrine DATETIME
+hydration, but not the MariaDB server timezone.
 
 **Important gotcha:** the default `form_div_layout.html.twig` does NOT
 define a `text_widget` block. Text-like inputs (text, email, password,
