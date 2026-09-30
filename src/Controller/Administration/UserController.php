@@ -9,6 +9,7 @@ use App\Entity\Administration\User;
 use App\Form\Administration\UserType;
 use App\Repository\Administration\UserRepository;
 use App\Security\Permission as Perm;
+use App\Security\Administration\UserActionVoter;
 use App\Service\Security\UserLifecycle\UserStateTransitionService;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\QueryBuilder;
@@ -102,9 +103,9 @@ final class UserController extends AbstractCrudController
      * already-seeded, already-differentiated permission rather than
      * introducing a new one.
      */
-    protected function getDeletePermission(): ?string
+    protected function getDeleteAttribute(): ?string
     {
-        return Perm::PERMISSION_IMPERSONATE_USERS;
+        return UserActionVoter::DELETE;
     }
 
     protected function getRequiredPermission(): string
@@ -285,6 +286,8 @@ final class UserController extends AbstractCrudController
             );
         }
 
+        $this->denyAccessUnlessGranted(UserActionVoter::RESEND_CONFIRMATION, $user);
+
         $this->stateTransition->resendConfirmation($user);
         $this->addFlash('success', $this->translator->trans('app.administration.flash.confirmation_resent', [
             '%email%' => $user->getEmail(),
@@ -295,29 +298,29 @@ final class UserController extends AbstractCrudController
     /**
      * The impersonate route exists for every row — visibility (does the
      * caller hold the permission? is the row self/admin/inactive?) is
-     * decided entirely in Twig now, via `getImpersonatePermission()`
-     * below plus `User::isAdmin()`/`isActive()` read directly off the
-     * row in `_row_actions.html.twig`. The route itself is gated again
-     * by `#[IsGranted]` on ImpersonateController::impersonate() as
-     * defence in depth.
+     * decided by UserActionVoter both in Twig and in the POST handler.
      */
     protected function getImpersonatePath(): ?string
     {
         return 'administration_user_impersonate';
     }
 
-    protected function getImpersonatePermission(): ?string
+    protected function getImpersonateAttribute(): ?string
     {
-        return Perm::PERMISSION_IMPERSONATE_USERS;
+        return UserActionVoter::IMPERSONATE;
     }
 
     /**
-     * Per-row resend button on the user list. The route exists for
-     * every row; `_row_actions.html.twig` shows it only for Pending
-     * users via `User::isPending()`.
+     * Per-row resend button, granted by UserActionVoter only for Pending
+     * users and actors with PERMISSION_MANAGE_USERS.
      */
     protected function getResendConfirmationPath(): ?string
     {
         return 'administration_user_resend_confirmation';
+    }
+
+    protected function getResendAttribute(): ?string
+    {
+        return UserActionVoter::RESEND_CONFIRMATION;
     }
 }

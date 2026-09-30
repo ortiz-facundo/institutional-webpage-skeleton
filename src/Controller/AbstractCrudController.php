@@ -185,6 +185,12 @@ abstract class AbstractCrudController extends AbstractController
         return null;
     }
 
+    /** Voter attribute for per-row impersonation eligibility, if applicable. */
+    protected function getImpersonateAttribute(): ?string
+    {
+        return null;
+    }
+
     /**
      * Route name for a per-row "resend" action (e.g. resending the
      * account confirmation email for a Pending user). Default: null →
@@ -200,6 +206,12 @@ abstract class AbstractCrudController extends AbstractController
      * unrestricted.
      */
     protected function getResendPermission(): ?string
+    {
+        return null;
+    }
+
+    /** Voter attribute for per-row resend eligibility, if applicable. */
+    protected function getResendAttribute(): ?string
     {
         return null;
     }
@@ -238,6 +250,12 @@ abstract class AbstractCrudController extends AbstractController
      * EDIT_X can delete).
      */
     protected function getDeletePermission(): ?string
+    {
+        return null;
+    }
+
+    /** Voter attribute for per-row delete eligibility, if applicable. */
+    protected function getDeleteAttribute(): ?string
     {
         return null;
     }
@@ -531,12 +549,15 @@ abstract class AbstractCrudController extends AbstractController
             'delete_path'        => $this->getRoutePrefix() . '_delete',
             'delete_tokens'      => $deleteTokens,
             'delete_permission'  => $this->getDeletePermission(),
+            'delete_attribute'   => $this->getDeleteAttribute(),
             'impersonate_path'         => $impersonatePath,
             'impersonate_tokens'       => $impersonateTokens,
             'impersonate_permission'   => $this->getImpersonatePermission(),
+            'impersonate_attribute'    => $this->getImpersonateAttribute(),
             'resend_path'              => $resendPath,
             'resend_tokens'            => $resendTokens,
             'resend_permission'        => $this->getResendPermission(),
+            'resend_attribute'         => $this->getResendAttribute(),
             'empty_message'      => $emptyMessage,
             'search_enabled'     => $this->isSearchEnabled(),
             'search_term'        => $searchTerm,
@@ -688,7 +709,12 @@ abstract class AbstractCrudController extends AbstractController
             );
         }
 
-        $blockedReason = $this->getDeleteBlockedReason($entity);
+        $deleteAttribute = $this->getDeleteAttribute();
+        if ($deleteAttribute !== null) {
+            $this->denyAccessUnlessGranted($deleteAttribute, $entity);
+        }
+
+        $blockedReason = $deleteAttribute === null ? $this->getDeleteBlockedReason($entity) : null;
         if ($blockedReason !== null) {
             $this->addFlash('error', $blockedReason);
             return $this->redirectToRoute($this->getRoutePrefix() . '_list');

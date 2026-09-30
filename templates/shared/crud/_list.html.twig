@@ -31,12 +31,15 @@
       @var delete_path       ?string      per-row delete route name
       @var delete_tokens     array<int,string>  entity_id => token
       @var delete_permission ?string
+      @var delete_attribute  ?string
       @var impersonate_path       ?string           per-row impersonate route name
       @var impersonate_tokens     array<int,string> entity_id => token
       @var impersonate_permission ?string
+      @var impersonate_attribute  ?string
       @var resend_path            ?string           per-row resend route name
       @var resend_tokens          array<int,string> entity_id => token
       @var resend_permission      ?string
+      @var resend_attribute       ?string
 
       Sortable headers (opt-in): pass `sort_field` (may be null) and
       `current_url` so any column with `sortable: true` renders through
@@ -152,12 +155,15 @@
                                         delete_path: delete_path|default(null),
                                         delete_token: delete_tokens is defined and delete_tokens[item.id] is defined ? delete_tokens[item.id] : null,
                                         delete_permission: delete_permission|default(null),
+                                        delete_attribute: delete_attribute|default(null),
                                         impersonate_path: impersonate_path|default(null),
                                         impersonate_token: impersonate_tokens is defined and impersonate_tokens[item.id] is defined ? impersonate_tokens[item.id] : null,
                                         impersonate_permission: impersonate_permission|default(null),
+                                        impersonate_attribute: impersonate_attribute|default(null),
                                         resend_path: resend_path|default(null),
                                         resend_token: resend_tokens is defined and resend_tokens[item.id] is defined ? resend_tokens[item.id] : null,
-                                        resend_permission: resend_permission|default(null)
+                                        resend_permission: resend_permission|default(null),
+                                        resend_attribute: resend_attribute|default(null)
                                     } %}
                                 {% endblock %}
                             </td>

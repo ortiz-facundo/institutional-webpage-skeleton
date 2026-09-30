@@ -9,14 +9,8 @@
     the hue. Adding a fourth action? Add a block override in the
     consumer's index.html.twig that wraps this include.
 
-    Visibility model: every button is gated by ONE flat `{% if %}`
-    combining (a) the route existing at all (`*_path` non-null — some
-    entities simply don't have e.g. an impersonate route), (b) an
-    optional permission check via Symfony's built-in `is_granted()`
-    Twig function (`*_permission` null = unrestricted), and (c), for
-    impersonate/resend only, a plain inline condition read directly off
-    `entity` (no controller-side hidden-id hook — `User::isAdmin()` /
-    `isActive()` / `isPending()` are just methods Twig can call).
+    Visibility is decided by the action voter when an `*_attribute` is
+    supplied. Legacy generic CRUD consumers can still use `*_permission`.
 
     Contract:
       @var entity                  object    the row's entity (needs getId())
@@ -28,12 +22,15 @@
       @var delete_path              ?string   route name for delete, optional
       @var delete_token             ?string   CSRF token for this row (delete)
       @var delete_permission        ?string   permission required to see it, or null
+      @var delete_attribute         ?string   voter attribute evaluated against entity
       @var impersonate_path         ?string   route name for impersonate, optional
       @var impersonate_token        ?string   CSRF token for this row (impersonate)
       @var impersonate_permission   ?string   permission required to see it, or null
+      @var impersonate_attribute    ?string   voter attribute evaluated against entity
       @var resend_path              ?string   route name for resend, optional
       @var resend_token             ?string   CSRF token for this row (resend)
       @var resend_permission        ?string   permission required to see it, or null
+      @var resend_attribute         ?string   voter attribute evaluated against entity
 #}
 <div class="inline-flex items-center gap-1">
     {% set _entity_lc = entity_label|default('item')|lower %}
@@ -61,13 +58,11 @@
         </a>
     {% endif %}
 
-    {# Impersonate / "log in as" — route existence, permission, AND
-       (not self, not an admin target, target must be Active). All
-       three business conditions are plain reads off `entity` /
-       `app.user` — no controller-side hidden-id hook. #}
+    {# Impersonate / "log in as" — route existence plus the action voter. #}
     {% if impersonate_path is defined and impersonate_path and impersonate_token is defined
-          and (impersonate_permission|default(null) is null or is_granted(impersonate_permission))
-          and entity.id != app.user.id and not entity.isAdmin() and entity.isActive() %}
+          and (impersonate_attribute|default(null) is not null
+              ? is_granted(impersonate_attribute, entity)
+              : (impersonate_permission|default(null) is null or is_granted(impersonate_permission))) %}
         <form method="post" action="{{ path(impersonate_path, {id: entity.id}) }}" class="inline"
               onsubmit="return confirm('{{ 'app.administration.crud.confirm.impersonate'|trans({'%entity%': _entity_lc}) }}')">
             <input type="hidden" name="_token" value="{{ impersonate_token }}">
@@ -83,12 +78,11 @@
         </form>
     {% endif %}
 
-    {# Resend confirmation — route existence, permission, AND the row
-       must be a Pending user (only state where a confirmation token
-       makes sense). #}
+    {# Resend confirmation — route existence plus the action voter. #}
     {% if resend_path is defined and resend_path and resend_token is defined
-          and (resend_permission|default(null) is null or is_granted(resend_permission))
-          and entity.isPending() %}
+          and (resend_attribute|default(null) is not null
+              ? is_granted(resend_attribute, entity)
+              : (resend_permission|default(null) is null or is_granted(resend_permission))) %}
         <form method="post" action="{{ path(resend_path, {id: entity.id}) }}" class="inline"
               onsubmit="return confirm('{{ 'app.administration.crud.confirm.resend'|trans({'%entity%': _entity_lc}) }}')">
             <input type="hidden" name="_token" value="{{ resend_token }}">
@@ -105,7 +99,9 @@
     {% endif %}
 
     {% if delete_path is defined and delete_path and delete_token is defined
-          and (delete_permission|default(null) is null or is_granted(delete_permission)) %}
+          and (delete_attribute|default(null) is not null
+              ? is_granted(delete_attribute, entity)
+              : (delete_permission|default(null) is null or is_granted(delete_permission))) %}
         <form method="post" action="{{ path(delete_path, {id: entity.id}) }}" class="inline"
               onsubmit="return confirm('{{ 'app.administration.crud.confirm.delete'|trans({'%entity%': _entity_lc}) }}')">
             <input type="hidden" name="_token" value="{{ delete_token }}">

@@ -6,9 +6,8 @@ namespace App\Controller\Administration;
 
 use App\Entity\Administration\User;
 use App\Repository\Administration\UserRepository;
-use App\Security\AdminPolicy;
 use App\Security\CsrfProtectedActionTrait;
-use App\Security\Permission as Perm;
+use App\Security\Administration\UserActionVoter;
 use Psr\Log\LoggerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
@@ -18,7 +17,6 @@ use Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInt
 use Symfony\Component\Security\Core\Authentication\Token\SwitchUserToken;
 use Symfony\Component\Security\Core\Exception\AccessDeniedException;
 use Symfony\Component\Security\Http\Firewall\SwitchUserListener;
-use Symfony\Component\Security\Http\Attribute\IsGranted;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
 /**
@@ -26,8 +24,8 @@ use Symfony\Contracts\Translation\TranslatorInterface;
  *
  * Flow:
  *   1. Admin POSTs to /admin/users/{id}/impersonate with a CSRF token.
- *   2. Controller validates the token + permission, blocks self-impersonation
- *      and admin-to-admin impersonation, writes an audit entry, and redirects
+ *   2. UserActionVoter authorizes the target, then the controller writes
+ *      an audit entry and redirects
  *      to /admin?_switch_user=<email>. Symfony's SwitchUserListener catches
  *      the redirect and swaps the token.
  *   3. Admin POSTs to /admin/exit-impersonation to come back.
@@ -57,13 +55,10 @@ final class ImpersonateController extends AbstractController
     }
 
     #[Route('/users/{id}/impersonate', name: 'impersonate', methods: ['POST'], requirements: ['id' => '\d+'])]
-    #[IsGranted(Perm::PERMISSION_IMPERSONATE_USERS)]
     public function impersonate(int $id, Request $request): Response
     {
         $this->assertValidCsrfToken($request, 'impersonate' . $id);
 
-        /** @var User|null $admin */
-        $admin = $this->getUser();
         $target = $this->users->find($id);
         if ($target === null) {
             throw $this->createNotFoundException(
@@ -71,46 +66,10 @@ final class ImpersonateController extends AbstractController
             );
         }
 
-        // Guard: self-impersonation is meaningless and confusing.
-        if ($admin?->getId() === $target->getId()) {
-            $this->addFlash('warning', $this->translator->trans('app.administration.impersonation.already_as_user'));
-            return $this->redirectToRoute('administration_user_list');
-        }
+        $this->denyAccessUnlessGranted(UserActionVoter::IMPERSONATE, $target);
 
-        // Guard: only Active users can be impersonated. Pending users
-        // have no password set; Disabled users are blocked by an admin.
-        // Either way there is nothing useful to impersonate into.
-        if (!$target->isActive()) {
-            $this->auditLogger->warning('impersonation.blocked.target_inactive', [
-                'actor_id'     => $admin?->getId(),
-                'actor_email'  => $admin?->getEmail(),
-                'target_id'    => $target->getId(),
-                'target_email' => $target->getEmail(),
-                'target_state' => $target->getState(),
-            ]);
-            $this->addFlash('error', $this->translator->trans(
-                'app.administration.impersonation.cannot_target_inactive',
-                [
-                    '%email%' => $target->getEmail(),
-                    '%state%' => $this->translator->trans('app.shared.state.' . $target->getState()),
-                ]
-            ));
-            return $this->redirectToRoute('administration_user_list');
-        }
-
-        // Guard: admins cannot impersonate other admins. The original admin
-        // could already do everything the target admin can do; the only
-        // effect of admin→admin impersonation is to muddy the audit trail.
-        if (AdminPolicy::isAdmin($target)) {
-            $this->auditLogger->warning('impersonation.blocked.target_is_admin', [
-                'actor_id'     => $admin?->getId(),
-                'actor_email'  => $admin?->getEmail(),
-                'target_id'    => $target->getId(),
-                'target_email' => $target->getEmail(),
-            ]);
-            $this->addFlash('error', $this->translator->trans('app.administration.impersonation.cannot_admin_to_admin'));
-            return $this->redirectToRoute('administration_user_list');
-        }
+        /** @var User|null $admin */
+        $admin = $this->getUser();
 
         $this->auditLogger->info('impersonation.started', [
             'actor_id'     => $admin?->getId(),

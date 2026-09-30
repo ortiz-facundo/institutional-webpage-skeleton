@@ -13,9 +13,13 @@
     } %}
     {% include 'shared/crud/_list.html.twig' with {
         title: title,
+        entity_label: entity_label,
         items: items,
         columns: columns,
         edit_path: edit_path,
+        delete_path: delete_path,
+        delete_tokens: delete_tokens,
+        delete_attribute: delete_attribute,
         empty_message: empty_message
     } %}
 {% endblock %}
