@@ -1,0 +1,20 @@
+{% extends 'base.html.twig' %}
+
+{% block body %}
+    <div class="flex min-h-screen items-center justify-center bg-stone-100 px-4 py-12">
+        <div class="w-full max-w-md">
+            {% block auth_flashes %}{% include 'shared/_flash_messages.html.twig' %}{% endblock %}
+            {% block auth_header %}
+                <div class="mb-8 text-center">
+                    <div class="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-full bg-stone-900 text-xl text-stone-50" aria-hidden="true">🛠</div>
+                    <h1 class="font-serif text-3xl text-stone-900">Skeleton</h1>
+                    <p class="mt-1 text-sm text-stone-500">{{ 'login.brand_subtitle'|trans }}</p>
+                </div>
+            {% endblock %}
+            <div class="rounded-lg border border-stone-200 bg-white p-8 shadow-sm {% block auth_card_class %}{% endblock %}">
+                {% block auth_body %}{% endblock %}
+            </div>
+            {% block auth_footer %}{% endblock %}
+        </div>
+    </div>
+{% endblock %}

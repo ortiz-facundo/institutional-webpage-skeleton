@@ -1,10 +1,8 @@
-{% extends 'base.html.twig' %}
+{% extends 'security/_auth_base.html.twig' %}
 
 {% block title %}{{ 'invalid_link.page_title'|trans }}{% endblock %}
 
-{% block body %}
-    <div class="min-h-screen flex items-center justify-center bg-stone-100 px-4">
-        <div class="w-full max-w-md">
+{% block auth_header %}
             <div class="text-center mb-8">
                 <div class="inline-flex items-center justify-center w-12 h-12 rounded-full bg-stone-900 text-stone-50 text-xl mb-4" aria-hidden="true">&#129689;</div>
                 <h1 class="font-serif text-3xl text-stone-900">{{ 'invalid_link.heading'|trans }}</h1>
@@ -16,12 +14,11 @@
                     {% endif %}
                 </p>
             </div>
+{% endblock %}
 
-            <div class="rounded-lg border border-stone-200 bg-white p-8 shadow-sm text-sm text-stone-700">
+{% block auth_card_class %}text-sm text-stone-700{% endblock %}
+{% block auth_body %}
                 <p class="m-0">
                     {{ 'invalid_link.contact_admin'|trans }}
                 </p>
-            </div>
-        </div>
-    </div>
 {% endblock %}
