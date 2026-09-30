@@ -1,0 +1,10 @@
+{# FormView `form` is an array-backed TagsInputType. The visible input has no
+   name; the carrier preserves Symfony's name/id and posts pipe-delimited tags. #}
+<div data-tags-input data-remove-label="{{ 'app.shared.tags.remove'|trans }}" class="space-y-2">
+    <div data-tags-input-target="chips" aria-live="polite" class="flex min-h-8 flex-wrap gap-1.5 empty:hidden"></div>
+    <input type="text" id="{{ id }}-entry" data-tags-input-target="entry"
+           autocomplete="off" placeholder="{{ placeholder|default('')|trans({}, translation_domain) }}"
+           aria-label="{{ label|default(name|humanize)|trans({}, translation_domain) }}"
+           class="block w-full rounded-md border border-stone-300 bg-white px-3 py-2 text-sm text-stone-900 placeholder-stone-400 shadow-sm focus:border-amber-600 focus:outline-none focus:ring-1 focus:ring-amber-600">
+    <input type="hidden" id="{{ id }}" name="{{ full_name }}" value="{{ value|default('') }}" data-tags-input-target="csv">
+</div>

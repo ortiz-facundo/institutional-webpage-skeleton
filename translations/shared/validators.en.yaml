@@ -11,3 +11,4 @@ app:
         validators:
             required: 'This field is required.'
             invalid_choice: 'Invalid choice.'
+            digits_only: 'Use digits only.'

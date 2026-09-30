@@ -501,6 +501,7 @@ class CustomSelectController {
         if (match) {
             const labelEl = match.querySelector('[data-select-option-label]');
             this.labelEl.textContent = labelEl ? labelEl.textContent : match.textContent.trim();
+            this.#renderIcon(match);
             if (this.dotEl) {
                 const dotClasses = match.dataset.dotClasses || '';
                 if (dotClasses) {
@@ -513,7 +514,16 @@ class CustomSelectController {
             }
         } else {
             this.labelEl.textContent = this.trigger.dataset.placeholderLabel || '';
+            this.#renderIcon(null);
         }
+    }
+
+    #renderIcon(option) {
+        const target = this.root.querySelector('[data-select-trigger-icon]');
+        if (!target) return;
+        target.replaceChildren();
+        const icon = option?.querySelector('[data-select-option-icon]');
+        if (icon) target.appendChild(icon.cloneNode(true));
     }
 
     /**
@@ -572,8 +582,10 @@ class CustomSelectController {
         this.options.forEach((opt) => {
             const labelEl = opt.querySelector('[data-select-option-label]');
             const text = (labelEl ? labelEl.textContent : opt.textContent).trim().toLowerCase();
-            const match = needle === '' || text.includes(needle);
+            const title = opt.querySelector('[data-select-option-title]')?.textContent || '';
+            const match = needle === '' || (text + ' ' + title).toLowerCase().includes(needle);
             opt.classList.toggle('hidden', !match);
+            opt.dataset.hidden = match ? 'false' : 'true';
             if (match) visible += 1;
         });
         this.listbox.dataset.empty = visible === 0 ? 'true' : 'false';

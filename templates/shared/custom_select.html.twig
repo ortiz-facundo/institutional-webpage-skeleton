@@ -64,7 +64,7 @@
                               <select>. Required in form mode.
       @var value             Currently selected value. Scalar for
                               single-select; list for multi-select.
-      @var options           Array of `{value, label, dot_classes?}`.
+       @var options           Array of `{value, label, dot_classes?, title?, icon?}`.
                               `dot_classes` paints a tiny dot inside both
                               the trigger and each listbox option.
       @var label             Optional form-field label rendered above.
@@ -80,7 +80,8 @@
       @var ajax              Boolean — set true when endpoint is set,
                               to disambiguate form mode from AJAX mode.
       @var multiple          Boolean. Multi-select mode.
-      @var filter            Boolean. Show the inline filter input.
+       @var filter            Boolean. Show the inline filter input.
+       @var native_attr       Map of HTML attributes forwarded to the hidden select.
                               Opt-in — off by default, even for
                               multi-select.
       @var select_all        Boolean. Multi-select only. Show the
@@ -206,6 +207,7 @@
                 <span aria-hidden="true"
                       data-select-dot
                       class="{% if _current_dot|length > 0 %}h-2 w-2 shrink-0 rounded-full {{ _current_dot }}{% else %}hidden h-2 w-2 shrink-0 rounded-full{% endif %}"></span>
+                <span data-select-trigger-icon aria-hidden="true" class="shrink-0">{% for o in options %}{% if o.value == value and o.icon|default(null) %}{{ o.icon }}{% endif %}{% endfor %}</span>
                 <span data-select-label class="truncate">{{ _current_label }}</span>
             {% endif %}
         </span>
@@ -315,7 +317,11 @@
                 {% if o.dot_classes is defined and o.dot_classes %}
                     <span aria-hidden="true" data-select-option-dot class="h-2 w-2 shrink-0 rounded-full {{ o.dot_classes }}"></span>
                 {% endif %}
-                <span class="flex-1 truncate" data-select-option-label>{{ o.label }}</span>
+                {% if o.icon|default(null) %}<span aria-hidden="true" data-select-option-icon class="shrink-0">{{ o.icon }}</span>{% endif %}
+                <span class="flex min-w-0 flex-1 flex-col">
+                    <span class="truncate" data-select-option-label>{{ o.label }}</span>
+                    {% if o.title|default(null) %}<span data-select-option-title class="truncate text-xs font-normal text-stone-500 group-data-[selected=true]:text-stone-200">{{ o.title }}</span>{% endif %}
+                </span>
             </li>
             {% endif %}
         {% endfor %}
@@ -329,7 +335,8 @@
         <select data-select-native
                 class="sr-only"
                 name="{{ _name }}"
-                {% if _multiple %}multiple{% endif %}>
+                 {% if _multiple %}multiple{% endif %}
+                 {% for attr_name, attr_value in native_attr|default({}) %} {{ attr_name }}="{{ attr_value|e('html_attr') }}"{% endfor %}>
             {% for o in options %}
                 <option value="{{ o.value }}" {% if o.value in _selected_values %}selected{% endif %}>{{ o.label }}</option>
             {% endfor %}

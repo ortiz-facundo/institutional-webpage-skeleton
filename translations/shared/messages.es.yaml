@@ -25,3 +25,12 @@ app:
             filter_aria: 'Filtrar opciones'
             select_all: 'Seleccionar todo'
             deselect_all: 'Deseleccionar todo'
+        crud:
+            add_row: 'Agregar fila'
+        tags:
+            remove: 'Quitar etiqueta'
+        phone:
+            country: 'Código de país'
+            area: 'Código de área'
+            number: 'Número de teléfono'
+            preview: 'Vista previa'

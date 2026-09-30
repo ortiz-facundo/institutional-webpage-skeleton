@@ -32,3 +32,12 @@ app:
             filter_aria: 'Filter options'
             select_all: 'Select all'
             deselect_all: 'Deselect all'
+        crud:
+            add_row: 'Add row'
+        tags:
+            remove: 'Remove tag'
+        phone:
+            country: 'Country code'
+            area: 'Area code'
+            number: 'Phone number'
+            preview: 'Preview'

@@ -6,3 +6,4 @@ app:
         validators:
             required: 'Este campo es obligatorio.'
             invalid_choice: 'Opción no válida.'
+            digits_only: 'Ingresa solo dígitos.'

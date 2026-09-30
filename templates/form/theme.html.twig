@@ -61,6 +61,16 @@
     </div>
 {% endblock %}
 
+{# Show validation feedback after the widget, rather than above it. #}
+{% block form_row_render %}
+    <div{% with {attr: row_attr} %}{{ block('attributes') }}{% endwith %}>
+        {{- form_label(form) -}}
+        {{- form_widget(form, widget_attr|default({})) -}}
+        {{- form_help(form) -}}
+        {{- form_errors(form) -}}
+    </div>
+{% endblock %}
+
 {% block form_widget_simple %}
     {% set attr = attr|merge({
         class: (attr.class|default('') ~ ' block w-full rounded-md border border-stone-300 bg-white px-3 py-2 text-stone-900 placeholder-stone-400 shadow-sm focus:border-amber-600 focus:outline-none focus:ring-1 focus:ring-amber-600')|trim
@@ -105,16 +115,30 @@
     {% for _group_label, _choice in choices %}
         {% if _choice is iterable %}
             {% for _opt in _choice %}
+                {% set _attr = _opt.attr|default({}) %}
                 {% set _options = _options|merge([{
                     value: _opt.value,
                     label: choice_translation_domain is same as(false) ? _opt.label : _opt.label|trans(_opt.labelTranslationParameters, choice_translation_domain),
+                    title: _attr['data-option-title']|default(null),
+                    icon: _attr['data-option-icon']|default(null),
+                    dot_classes: _attr['data-dot-classes']|default(null),
                 }]) %}
             {% endfor %}
         {% else %}
+            {% set _attr = _choice.attr|default({}) %}
             {% set _options = _options|merge([{
                 value: _choice.value,
                 label: choice_translation_domain is same as(false) ? _choice.label : _choice.label|trans(_choice.labelTranslationParameters, choice_translation_domain),
+                title: _attr['data-option-title']|default(null),
+                icon: _attr['data-option-icon']|default(null),
+                dot_classes: _attr['data-dot-classes']|default(null),
             }]) %}
+        {% endif %}
+    {% endfor %}
+    {% set _native_attr = {} %}
+    {% for _name, _value in attr|default({}) %}
+        {% if _name not in ['class', 'data-select-filter'] %}
+            {% set _native_attr = _native_attr|merge({(_name): _value}) %}
         {% endif %}
     {% endfor %}
     {% include 'shared/custom_select.html.twig' with {
@@ -124,8 +148,53 @@
         options: _options,
         placeholder: (placeholder is defined and placeholder is not none and placeholder != '') ? (translation_domain is same as(false) ? placeholder : placeholder|trans({}, translation_domain)) : '',
         multiple: multiple|default(false),
-        invalid: not (valid|default(true)),
+        invalid: valid is defined and not valid,
+        filter: attr['data-select-filter']|default(false),
+        native_attr: _native_attr,
     } only %}
+{% endblock %}
+
+{% block phone_input_widget %}
+    <div {{ block('widget_container_attributes') }} data-phone-input class="space-y-2">
+        <div class="flex flex-wrap items-start gap-2">
+            <div class="w-32 shrink-0">{{ form_widget(form.country_code) }}</div>
+            <div class="w-20 shrink-0">{{ form_widget(form.area_code, {attr: {'data-phone-area': '', 'aria-label': 'app.shared.phone.area'|trans}}) }}</div>
+            <div class="min-w-36 flex-1">{{ form_widget(form.number, {attr: {'data-phone-number': '', 'aria-label': 'app.shared.phone.number'|trans}}) }}</div>
+        </div>
+        {% for child in [form.country_code, form.area_code, form.number] %}{{ form_errors(child) }}{% endfor %}
+        <p class="text-xs text-stone-500">{{ 'app.shared.phone.preview'|trans }}: <span data-phone-preview class="font-mono text-stone-900">—</span></p>
+    </div>
+{% endblock %}
+
+{% block tags_input_widget %}
+    {% include 'shared/_tags_input.html.twig' with {
+        id: id, full_name: full_name, value: value, placeholder: attr.placeholder|default(''),
+        label: label, name: name, translation_domain: translation_domain
+    } only %}
+{% endblock %}
+
+{% block tags_input_row %}
+    <div class="mb-4">
+        {% if label is not same as(false) %}<label for="{{ id }}-entry" class="mb-1 block text-sm font-medium text-stone-700">{{ label|default(name|humanize)|trans({}, translation_domain) }}</label>{% endif %}
+        {{ form_widget(form) }}{{ form_help(form) }}{{ form_errors(form) }}
+    </div>
+{% endblock %}
+
+{# Text-backed select for options populated later by a form controller. #}
+{% block select_text_widget %}
+    {% set placeholder = attr['data-placeholder']|default('') %}
+    {% set attr = attr|merge({class: (attr.class|default('') ~ ' block w-full rounded-md border border-stone-300 bg-white px-3 py-2 text-stone-900 shadow-sm focus:border-amber-600 focus:outline-none focus:ring-1 focus:ring-amber-600')|trim}) %}
+    <select {{ block('widget_attributes') }}>
+        <option value=""{{ value is empty ? ' selected' : '' }}>{{ placeholder }}</option>
+        {% if value is not empty %}<option value="{{ value }}" selected>{{ value }}</option>{% endif %}
+    </select>
+{% endblock %}
+
+{# Symfony's default color_widget already renders native type=color correctly;
+   keep the native renderer but apply a matching focus/border treatment. #}
+{% block color_widget %}
+    {% set attr = attr|merge({class: (attr.class|default('') ~ ' h-10 w-16 cursor-pointer rounded-md border border-stone-300 bg-white p-1 focus:border-amber-600 focus:outline-none focus:ring-2 focus:ring-amber-600')|trim}) %}
+    {{ parent() }}
 {% endblock %}
 
 {% block checkbox_widget %}
