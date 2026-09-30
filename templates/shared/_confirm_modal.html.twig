@@ -1,0 +1,20 @@
+{# Shared confirmation dialog. Trigger buttons provide their own translated copy. #}
+<dialog id="app-confirm-modal"
+        aria-labelledby="app-confirm-modal-title"
+        aria-describedby="app-confirm-modal-message"
+        class="w-[min(100%-2rem,28rem)] rounded-xl border border-stone-200 bg-white p-0 text-stone-900 shadow-2xl backdrop:bg-stone-950/50 backdrop:backdrop-blur-[2px]">
+    <div class="border-b border-stone-200 px-6 py-5">
+        <h2 id="app-confirm-modal-title" class="font-serif text-xl font-semibold text-stone-900" data-confirm-title></h2>
+        <p id="app-confirm-modal-message" class="mt-2 text-sm leading-6 text-stone-600" data-confirm-message></p>
+    </div>
+    <div class="flex justify-end gap-3 bg-stone-50 px-6 py-4">
+        <button type="button" data-confirm-cancel
+                class="rounded-md border border-stone-300 bg-white px-4 py-2 text-sm font-medium text-stone-700 shadow-sm hover:bg-stone-100 focus:outline-none focus:ring-2 focus:ring-stone-400 focus:ring-offset-2">
+            {{ 'app.administration.crud.confirm.cancel'|trans }}
+        </button>
+        <button type="button" data-confirm-submit
+                class="rounded-md bg-rose-700 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-rose-800 focus:outline-none focus:ring-2 focus:ring-rose-600 focus:ring-offset-2">
+            {{ 'app.administration.crud.confirm.proceed'|trans }}
+        </button>
+    </div>
+</dialog>

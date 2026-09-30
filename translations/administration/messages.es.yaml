@@ -18,6 +18,13 @@ app:
                 delete: '¿Eliminar este %entity%? Esta acción no se puede deshacer.'
                 impersonate: '¿Iniciar sesión como este %entity%? Actuarás en su nombre hasta que salgas de la suplantación.'
                 resend: '¿Reenviar el correo de confirmación de cuenta a este %entity%?'
+                title:
+                    delete: 'Eliminar %entity%'
+                    delete_generic: 'Confirmar eliminación'
+                    impersonate: 'Confirmar suplantación'
+                    resend: 'Reenviar correo de confirmación'
+                cancel: 'Cancelar'
+                proceed: 'Continuar'
             actions:
                 view: 'Ver %entity%'
                 edit: 'Editar %entity%'

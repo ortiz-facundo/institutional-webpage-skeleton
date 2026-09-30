@@ -37,6 +37,13 @@ app:
                 delete: 'Delete this %entity%? This cannot be undone.'
                 impersonate: 'Log in as this %entity%? You will act on their behalf until you exit impersonation.'
                 resend: 'Re-send the account confirmation email to this %entity%?'
+                title:
+                    delete: 'Delete %entity%'
+                    delete_generic: 'Confirm deletion'
+                    impersonate: 'Confirm impersonation'
+                    resend: 'Resend confirmation email'
+                cancel: 'Cancel'
+                proceed: 'Continue'
             actions:
                 view: 'View %entity%'
                 edit: 'Edit %entity%'

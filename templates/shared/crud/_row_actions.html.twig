@@ -63,10 +63,13 @@
           and (impersonate_attribute|default(null) is not null
               ? is_granted(impersonate_attribute, entity)
               : (impersonate_permission|default(null) is null or is_granted(impersonate_permission))) %}
-        <form method="post" action="{{ path(impersonate_path, {id: entity.id}) }}" class="inline"
-              onsubmit="return confirm('{{ 'app.administration.crud.confirm.impersonate'|trans({'%entity%': _entity_lc}) }}')">
+        {% set _form_id = 'impersonate-' ~ entity.id %}
+        <form id="{{ _form_id }}" method="post" action="{{ path(impersonate_path, {id: entity.id}) }}" class="inline">
             <input type="hidden" name="_token" value="{{ impersonate_token }}">
-            <button type="submit"
+            <button type="button"
+                    data-confirm-form="{{ _form_id }}"
+                    data-confirm-title="{{ 'app.administration.crud.confirm.title.impersonate'|trans }}"
+                    data-confirm-message="{{ 'app.administration.crud.confirm.impersonate'|trans({'%entity%': _entity_lc}) }}"
                     title="{{ 'app.administration.crud.actions.impersonate'|trans({'%entity%': _entity_lc}) }}"
                     aria-label="{{ 'app.administration.crud.actions.impersonate'|trans({'%entity%': _entity_lc}) }}"
                     class="inline-flex h-8 w-8 items-center justify-center rounded-md text-violet-700 hover:bg-violet-50 focus:outline-none focus:ring-2 focus:ring-violet-600 focus:ring-offset-2">
@@ -83,10 +86,13 @@
           and (resend_attribute|default(null) is not null
               ? is_granted(resend_attribute, entity)
               : (resend_permission|default(null) is null or is_granted(resend_permission))) %}
-        <form method="post" action="{{ path(resend_path, {id: entity.id}) }}" class="inline"
-              onsubmit="return confirm('{{ 'app.administration.crud.confirm.resend'|trans({'%entity%': _entity_lc}) }}')">
+        {% set _form_id = 'resend-' ~ entity.id %}
+        <form id="{{ _form_id }}" method="post" action="{{ path(resend_path, {id: entity.id}) }}" class="inline">
             <input type="hidden" name="_token" value="{{ resend_token }}">
-            <button type="submit"
+            <button type="button"
+                    data-confirm-form="{{ _form_id }}"
+                    data-confirm-title="{{ 'app.administration.crud.confirm.title.resend'|trans }}"
+                    data-confirm-message="{{ 'app.administration.crud.confirm.resend'|trans({'%entity%': _entity_lc}) }}"
                     title="{{ 'app.administration.crud.actions.resend'|trans }}"
                     aria-label="{{ 'app.administration.crud.actions.resend'|trans }}"
                     class="inline-flex h-8 w-8 items-center justify-center rounded-md text-amber-700 hover:bg-amber-50 focus:outline-none focus:ring-2 focus:ring-amber-600 focus:ring-offset-2">
@@ -102,10 +108,13 @@
           and (delete_attribute|default(null) is not null
               ? is_granted(delete_attribute, entity)
               : (delete_permission|default(null) is null or is_granted(delete_permission))) %}
-        <form method="post" action="{{ path(delete_path, {id: entity.id}) }}" class="inline"
-              onsubmit="return confirm('{{ 'app.administration.crud.confirm.delete'|trans({'%entity%': _entity_lc}) }}')">
+        {% set _form_id = 'delete-' ~ entity.id %}
+        <form id="{{ _form_id }}" method="post" action="{{ path(delete_path, {id: entity.id}) }}" class="inline">
             <input type="hidden" name="_token" value="{{ delete_token }}">
-            <button type="submit"
+            <button type="button"
+                    data-confirm-form="{{ _form_id }}"
+                    data-confirm-title="{{ 'app.administration.crud.confirm.title.delete'|trans({'%entity%': _entity_lc}) }}"
+                    data-confirm-message="{{ 'app.administration.crud.confirm.delete'|trans({'%entity%': _entity_lc}) }}"
                     title="{{ 'app.administration.crud.actions.delete'|trans({'%entity%': _entity_lc}) }}"
                     aria-label="{{ 'app.administration.crud.actions.delete'|trans({'%entity%': _entity_lc}) }}"
                     class="inline-flex h-8 w-8 items-center justify-center rounded-md text-rose-700 hover:bg-rose-50 focus:outline-none focus:ring-2 focus:ring-rose-600 focus:ring-offset-2">
