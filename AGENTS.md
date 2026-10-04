@@ -469,7 +469,10 @@ choose recipients, translation keys, routes, deduplication keys, and optional
 permissions from the canonical `App\Security\Permission` catalog.
 
 The bell and inbox live under `templates/notification/`; device settings are
-linked from Account. All visible strings are in bilingual notification catalogs.
+linked from Account. The bell sits in the sidebar footer at `lg`+ and in the
+mobile top bar below it. Panel rows show a Heroicon per notification `type`:
+register new types in `TYPE_ICONS` at the top of `assets/js/notifications.js`
+(exact type, then module prefix before the first dot, then the bell). All visible strings are in bilingual notification catalogs.
 The root-scoped `public/sw.js` handles push only, never caches backoffice pages.
 Only Chrome desktop/Android endpoints are currently allowed. Explicit logout
 detaches the browser subscription; impersonation blocks subscription mutations.

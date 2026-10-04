@@ -66,11 +66,12 @@
                     <span aria-hidden="true" class="text-xl">🛠</span>
                     <span class="font-serif text-lg text-stone-900">Skeleton</span>
                 </div>
+                {# At `lg`+ the bell moves to the sidebar footer. #}
+                <div class="ml-auto">
+                    {% include 'notification/_bell.html.twig' with {placement: 'topbar'} only %}
+                </div>
             </div>
 
-            <div class="mx-auto flex max-w-6xl justify-end px-8 pt-4">
-                {% include 'notification/_bell.html.twig' %}
-            </div>
             <div class="mx-auto max-w-6xl px-8 py-8">
                 {% include 'shared/_flash_messages.html.twig' %}
 

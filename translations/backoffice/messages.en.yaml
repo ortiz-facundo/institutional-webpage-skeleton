@@ -14,7 +14,6 @@ app:
     backoffice:
         title: 'Backoffice'
         sign_out: 'Sign out'
-        settings: 'Settings'
         nav:
             dashboard: 'Dashboard'
             users: 'Users'

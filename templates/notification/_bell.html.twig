@@ -1,21 +1,57 @@
+{#
+    Notification bell + panel. Rendered twice by the backoffice chrome:
+      placement: 'sidebar'  sidebar footer at `lg`+, panel flies out to the right
+      placement: 'topbar'   mobile top bar below `lg`, panel drops down
+    assets/js/notifications.js polls the feed once and renders every bell.
+#}
+{% set placement = placement|default('sidebar') %}
 <div class="relative" data-notification-bell
      data-feed="{{ path('notification_feed') }}"
      data-read-url="{{ path('notification_read', {id: 0}) }}"
+     data-read-all-url="{{ path('notification_read_all') }}"
      data-token="{{ csrf_token('notification_inbox') }}"
      data-empty="{{ 'app.notification.empty'|trans }}"
-     data-error="{{ 'app.notification.error'|trans }}">
-    <button type="button" data-notification-toggle aria-expanded="false" aria-controls="notification-panel"
-            aria-label="{{ 'app.notification.title'|trans }}"
-            class="relative inline-flex h-10 w-10 items-center justify-center rounded-md text-stone-600 hover:bg-stone-100 focus:ring-2 focus:ring-amber-600">
-        <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75v-.7a6 6 0 0 0-12 0v.7a8.967 8.967 0 0 1-2.311 6.022 23.848 23.848 0 0 0 5.454 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0"/></svg>
-        <span data-notification-count class="absolute -right-1 -top-1 hidden rounded-full bg-amber-700 px-1.5 text-xs font-bold text-white"></span>
+     data-error="{{ 'app.notification.error'|trans }}"
+     data-today="{{ 'app.notification.today'|trans }}"
+     data-earlier="{{ 'app.notification.earlier'|trans }}"
+     data-just-now="{{ 'app.notification.just_now'|trans }}"
+     data-mark-read="{{ 'app.notification.mark_read'|trans }}"
+     data-new-count="{{ 'app.notification.new_count'|trans({'%count%': '__COUNT__'}) }}">
+    <button type="button" data-notification-toggle aria-expanded="false" aria-controls="notification-panel-{{ placement }}"
+            aria-label="{{ 'app.notification.title'|trans }}" title="{{ 'app.notification.title'|trans }}"
+            class="relative inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-stone-500 hover:bg-stone-100 hover:text-stone-900 focus:outline-none focus:ring-2 focus:ring-amber-600 focus:ring-offset-2 aria-expanded:bg-stone-100 aria-expanded:text-stone-900">
+        <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75v-.7a6 6 0 0 0-12 0v.7a8.967 8.967 0 0 1-2.311 6.022 23.848 23.848 0 0 0 5.454 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0"/></svg>
+        <span data-notification-count hidden
+              class="absolute right-0.5 top-0.5 h-[18px] min-w-[18px] rounded-full bg-amber-600 px-1 text-center text-[10px] font-semibold leading-[18px] text-white ring-2 ring-white"></span>
     </button>
-    <section id="notification-panel" data-notification-panel hidden aria-label="{{ 'app.notification.title'|trans }}"
-             class="absolute right-0 top-12 z-20 w-80 max-w-[calc(100vw-2rem)] rounded-lg border border-stone-200 bg-white shadow-xl">
-        <header class="flex items-center justify-between border-b border-stone-200 px-4 py-3">
-            <h2 class="font-serif text-lg">{{ 'app.notification.title'|trans }}</h2>
-            <a href="{{ path('notification_list') }}" class="text-sm text-amber-700">{{ 'app.notification.view_all'|trans }}</a>
+    <section id="notification-panel-{{ placement }}" data-notification-panel hidden aria-label="{{ 'app.notification.title'|trans }}"
+             class="{{ placement == 'sidebar'
+                 ? 'absolute bottom-0 left-full ml-4 w-96 max-h-[min(36rem,calc(100vh-2rem))]'
+                 : 'absolute right-0 top-full mt-3 w-[calc(100vw-3rem)] max-w-sm max-h-[calc(100vh-6rem)]' }} z-50 flex-col rounded-lg [&:not([hidden])]:flex border border-stone-200 bg-white shadow-xl">
+        {% if placement == 'sidebar' %}
+            <span aria-hidden="true" class="absolute -left-1.5 bottom-3.5 h-3 w-3 rotate-45 border-b border-l border-stone-200 bg-white"></span>
+        {% endif %}
+        <header class="flex items-center justify-between gap-3 border-b border-stone-200 px-4 py-3">
+            <div class="flex items-center gap-2">
+                <h2 class="font-serif text-lg text-stone-900">{{ 'app.notification.title'|trans }}</h2>
+                <span data-notification-new hidden class="rounded-full bg-amber-100 px-2 text-xs font-medium leading-5 text-amber-800"></span>
+            </div>
+            <button type="button" data-notification-read-all disabled
+                    class="text-xs font-medium text-amber-700 hover:text-amber-800 disabled:cursor-default disabled:text-stone-300">
+                {{ 'app.notification.mark_all'|trans }}
+            </button>
         </header>
-        <div data-notification-items class="max-h-96 overflow-y-auto" aria-live="polite"></div>
+        <div data-notification-items class="min-h-0 flex-1 overflow-y-auto pb-1" aria-live="polite"></div>
+        <footer class="flex items-center justify-between border-t border-stone-200 px-4 py-2.5 text-xs">
+            <a href="{{ path('notification_list') }}" class="inline-flex items-center gap-1 font-medium text-stone-700 hover:text-amber-700">
+                {{ 'app.notification.view_all'|trans }}
+                <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3"/></svg>
+            </a>
+            <a href="{{ path('account_preferences_notifications') }}"
+               aria-label="{{ 'app.notification.settings'|trans }}" title="{{ 'app.notification.settings'|trans }}"
+               class="inline-flex h-7 w-7 items-center justify-center rounded text-stone-500 hover:bg-stone-100 hover:text-stone-900 focus:outline-none focus:ring-2 focus:ring-amber-600">
+                <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M10.5 6h9.75M10.5 6a1.5 1.5 0 1 1-3 0m3 0a1.5 1.5 0 1 0-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m-9.75 0h9.75"/></svg>
+            </a>
+        </footer>
     </section>
 </div>

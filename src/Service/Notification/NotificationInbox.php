@@ -33,6 +33,7 @@ final class NotificationInbox
     {
         return [
             'id' => $notification->getId(),
+            'type' => $notification->getType(),
             'title' => $this->translator->trans($notification->getTitleKey(), $notification->getTranslationParameters(), 'messages', $locale),
             'body' => $this->translator->trans($notification->getBodyKey(), $notification->getTranslationParameters(), 'messages', $locale),
             // Push clicks go through the authenticated inbox action to check ownership;

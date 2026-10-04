@@ -5,7 +5,6 @@ app:
     backoffice:
         title: 'Panel'
         sign_out: 'Cerrar sesión'
-        settings: 'Ajustes'
         nav:
             dashboard: 'Panel'
             users: 'Usuarios'

@@ -9,6 +9,10 @@ app.notification.all: Todas
 app.notification.unread: Sin leer
 app.notification.mark_all: Marcar todas como leídas
 app.notification.mark_read: Marcar como leída
+app.notification.today: Hoy
+app.notification.earlier: Anteriores
+app.notification.just_now: Ahora mismo
+app.notification.new_count: '%count% nuevas'
 app.notification.pagination: Páginas de notificaciones
 app.notification.previous: Anterior
 app.notification.next: Siguiente
