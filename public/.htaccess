@@ -30,6 +30,9 @@ RewriteRule ^ index.php [L]
 # The following directives are set to set the proper HTTP headers to improve
 # the security of the application.
 <IfModule mod_headers.c>
+    <Files "sw.js">
+        Header set Cache-Control "no-cache"
+    </Files>
     # Disable content sniffing in some browsers.
     Header set X-Content-Type-Options "nosniff"
     # Disable referrer leaking.

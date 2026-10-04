@@ -1,0 +1,30 @@
+app.notification.title: Notifications
+app.notification.view_all: View all
+app.notification.empty: You have no notifications here yet.
+app.notification.error: Something went wrong. Refresh the page and try again.
+app.notification.unread_count: '%count% unread notifications'
+app.notification.settings: Notification settings
+app.notification.filters: Filter notifications
+app.notification.all: All
+app.notification.unread: Unread
+app.notification.mark_all: Mark all as read
+app.notification.mark_read: Mark as read
+app.notification.pagination: Notification pages
+app.notification.previous: Previous
+app.notification.next: Next
+app.notification.device_help: Enable Chrome notifications separately on each computer or Android phone. Titles and short descriptions may appear on your lock screen. Your inbox works even when push is disabled.
+app.notification.enable: Enable on this device
+app.notification.disable: Disable on this device
+app.notification.enabled: Notifications are enabled on this device.
+app.notification.disabled: Notifications are not enabled on this device.
+app.notification.unsupported: Use Chrome on desktop or Android over HTTPS (localhost also works on desktop).
+app.notification.denied: Permission was not granted. If blocked, change this website's notification permission in Chrome settings.
+app.notification.not_configured: Push delivery is not configured. Your notification inbox is still available.
+app.notification.impersonating: Device subscriptions cannot be changed while impersonating another user.
+app.notification.devices: Subscribed devices
+app.notification.revoke: Revoke
+app.notification.no_devices: No subscribed devices.
+app.notification.test.title: Your notifications are working
+app.notification.test.body: 'Hello %name%! This is a test notification from Skeleton.'
+app.notification.test.users_title: '👥 Your user directory is one click away'
+app.notification.test.users_body: 'Hi %name%! ✨ Open this notification to visit the Users page. 🚀'

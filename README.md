@@ -49,6 +49,58 @@ two projects in sync with this skeleton.
 
 ## 1. Overview
 
+### Notifications
+
+The reusable notification inbox is at `/account/notifications`. The bell in
+the backoffice shows recent items and the unread count. Device settings are at
+`/account/profile-settings/notifications`. Chrome desktop and Android Web Push
+are optional: each device opts in separately. See `README_DEPLOY.md` §
+"Notifications and cron" for cPanel setup.
+
+Development walkthrough:
+
+```bash
+docker compose exec php bin/console doctrine:migrations:migrate --no-interaction
+docker compose exec php bin/console app:notifications:vapid-keys
+# Store the printed keys in .env.local, set NOTIFICATION_PUSH_ENABLED=1,
+# and set NOTIFICATION_VAPID_SUBJECT to a valid contact mailto: address.
+# Sign in and enable this device under Account → Notifications.
+docker compose exec php bin/console app:dev:test-notification test@skeleton.local
+docker compose exec php bin/console app:notifications:process -v
+# Emoji/click-through demonstration (recipient needs permission to manage users):
+docker compose exec php bin/console app:dev:test-notification test@skeleton.local --users
+docker compose exec php bin/console app:notifications:process -v
+docker compose exec php php tests/notification_smoke.php
+node tests/notification_worker_click.cjs
+```
+
+Desktop Chrome works on `http://localhost:8000`. Android must access a trusted
+HTTPS origin, not `http://<LAN-IP>:8000`; permission must be granted on the phone.
+No background daemon is started automatically in development: manually run the
+processor to simulate a cron tick. The inbox works with push disabled.
+
+The notification icon and browser favicon use `public/skeleton-logo.png` (512px).
+Its editable source is `assets/branding/skeleton-logo.svg`; regenerate the PNG
+with `bash scripts/build-skeleton-logo.sh` (requires ImageMagick).
+
+Business services call `App\Service\Notification\CreateNotification::execute()`
+with the recipient, translation keys, destination route, and optionally a stable
+deduplication key and a permission from `App\Security\Permission`. One record is
+created per recipient. The publisher flushes the current unit of work and joins
+an outer DBAL transaction if present; wrap the business change and publication
+in the same transaction. Do not call it from Doctrine lifecycle callbacks.
+Recipients and business-specific translations remain the downstream's concern.
+
+`NotificationDelivery` itself is the queue: concrete services process due rows,
+retry transient failures up to five attempts, and record per-device outcomes.
+No Messenger, gateway interfaces, custom value objects, or definition registry
+are involved. Only Web Push is implemented; an email sender can be added as a
+new concrete service when required. Read actions require ownership and CSRF;
+GET links never mutate read state. Native notification clicks request a new tab,
+preserving existing backoffice tabs and unsaved forms. Push-service acceptance is not proof of display.
+Notifications already accepted cannot be recalled and interrupted sends may be
+repeated. Browser notification tags reduce duplicate display.
+
 The Symfony Backoffice Skeleton is a working Symfony application that ships
 only the backoffice: auth, RBAC, account lifecycle, profile settings, i18n, and
 the shared CRUD base. It is the common ancestor of two downstream projects.

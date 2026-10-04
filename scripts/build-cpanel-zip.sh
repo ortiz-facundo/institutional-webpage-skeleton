@@ -246,6 +246,14 @@ DirectoryIndex index.php
 RewriteRule ^build/(.*)$ public/build/$1 [L]
 RewriteRule ^uploads/(.*)$ public/uploads/$1 [L]
 RewriteRule ^favicon\.svg$ public/favicon.svg [L]
+RewriteRule ^sw\.js$ public/sw.js [L]
+RewriteRule ^skeleton-logo\.png$ public/skeleton-logo.png [L]
+
+<IfModule mod_headers.c>
+    <Files "sw.js">
+        Header set Cache-Control "no-cache"
+    </Files>
+</IfModule>
 
 # 2. Real files served as-is. We deliberately do NOT match directories
 #    here — matching `-d` on the doc root would short-circuit rule 7
@@ -396,6 +404,12 @@ MAILER_FROM_NAME="CHANGE_ME_APP_NAME"
 # Public base URL — used in confirmation emails (admin account
 # confirmation links). Replace in .env.local.
 APP_URL=https://CHANGE_ME_DOMAIN
+
+# Push delivery is opt-in; real, persistent VAPID values belong in .env.local.
+NOTIFICATION_PUSH_ENABLED=0
+NOTIFICATION_VAPID_PUBLIC_KEY=
+NOTIFICATION_VAPID_PRIVATE_KEY=
+NOTIFICATION_VAPID_SUBJECT=mailto:no-reply@CHANGE_ME_DOMAIN
 ENV
 
 # Stamp a unique deploy key. Operators MUST replace this in .env.local

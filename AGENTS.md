@@ -457,6 +457,33 @@ discarded (…)"`). Only `pending` proposals show up in reviews.
 
 ## Shared Twig CRUD base
 
+## Notifications
+
+The Notification module uses three entities (`Notification`, `PushSubscription`,
+`NotificationDelivery`) and concrete services under `src/Service/Notification/`.
+Keep this deliberately simple: no Messenger, custom value objects, gateway
+interfaces, or notification-definition registries without a concrete need.
+`CreateNotification::execute()` stores one recipient's notification and queues
+per-device delivery rows in the same transaction. Downstream business services
+choose recipients, translation keys, routes, deduplication keys, and optional
+permissions from the canonical `App\Security\Permission` catalog.
+
+The bell and inbox live under `templates/notification/`; device settings are
+linked from Account. All visible strings are in bilingual notification catalogs.
+The root-scoped `public/sw.js` handles push only, never caches backoffice pages.
+Only Chrome desktop/Android endpoints are currently allowed. Explicit logout
+detaches the browser subscription; impersonation blocks subscription mutations.
+Native notification clicks open a new browsing context rather than navigating
+an existing backoffice tab, so notification interactions do not discard forms.
+
+`app:notifications:process` is a bounded, flock-protected cron command (single
+host); `NotificationDelivery` is its persistent queue. Dev tests use
+`app:dev:test-notification <email>` followed by the processor. VAPID keys belong
+in `.env.local` and remain stable across deployments. See README/README_DEPLOY
+for commands and cPanel's `/sw.js` alias. No automatic worker service is started.
+
+## Shared Twig CRUD base (continued)
+
 Every entity that needs full CRUD (list, new, edit, delete) reuses these
 moving parts:
 

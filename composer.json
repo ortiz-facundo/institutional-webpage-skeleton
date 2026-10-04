@@ -12,6 +12,7 @@
         "doctrine/doctrine-bundle": "^3.2",
         "doctrine/doctrine-migrations-bundle": "^4.0",
         "doctrine/orm": "^3.6",
+        "minishlink/web-push": "^9.0",
         "pentatrion/vite-bundle": "^8.2",
         "symfony/apache-pack": "*",
         "symfony/console": "7.4.*",

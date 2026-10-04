@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-labelledby="title description">
+  <title id="title">Skeleton</title>
+  <desc id="description">A structural S built from stone-white beams and an amber crosspiece on a charcoal tile.</desc>
+  <rect width="512" height="512" rx="112" fill="#1c1917"/>
+  <g fill="#fafaf9">
+    <rect x="132" y="132" width="248" height="64" rx="20"/>
+    <rect x="132" y="164" width="64" height="124" rx="20"/>
+    <rect x="316" y="224" width="64" height="124" rx="20"/>
+    <rect x="132" y="316" width="248" height="64" rx="20"/>
+  </g>
+  <rect x="132" y="224" width="248" height="64" rx="20" fill="#d97706"/>
+  <g fill="#1c1917">
+    <circle cx="164" cy="164" r="10"/>
+    <circle cx="348" cy="348" r="10"/>
+  </g>
+</svg>

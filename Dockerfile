@@ -18,6 +18,7 @@ RUN set -eux; \
 
 RUN set -eux; \
     docker-php-ext-install \
+        bcmath \
         intl \
         opcache \
         pdo_mysql \

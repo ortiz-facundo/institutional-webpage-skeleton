@@ -1,0 +1,30 @@
+app.notification.title: Notificaciones
+app.notification.view_all: Ver todas
+app.notification.empty: Todavía no tienes notificaciones aquí.
+app.notification.error: Algo salió mal. Actualiza la página e inténtalo de nuevo.
+app.notification.unread_count: '%count% notificaciones sin leer'
+app.notification.settings: Ajustes de notificaciones
+app.notification.filters: Filtrar notificaciones
+app.notification.all: Todas
+app.notification.unread: Sin leer
+app.notification.mark_all: Marcar todas como leídas
+app.notification.mark_read: Marcar como leída
+app.notification.pagination: Páginas de notificaciones
+app.notification.previous: Anterior
+app.notification.next: Siguiente
+app.notification.device_help: Activa las notificaciones de Chrome por separado en cada ordenador o teléfono Android. Los títulos y las descripciones breves pueden aparecer en tu pantalla de bloqueo. Tu bandeja funciona aunque las notificaciones push estén desactivadas.
+app.notification.enable: Activar en este dispositivo
+app.notification.disable: Desactivar en este dispositivo
+app.notification.enabled: Las notificaciones están activadas en este dispositivo.
+app.notification.disabled: Las notificaciones no están activadas en este dispositivo.
+app.notification.unsupported: Usa Chrome en un ordenador o Android con HTTPS (localhost también funciona en un ordenador).
+app.notification.denied: No se ha concedido el permiso. Si está bloqueado, cambia el permiso de notificaciones de este sitio en los ajustes de Chrome.
+app.notification.not_configured: El envío push no está configurado. Tu bandeja de notificaciones sigue disponible.
+app.notification.impersonating: No puedes cambiar las suscripciones de dispositivos mientras suplantas a otro usuario.
+app.notification.devices: Dispositivos suscritos
+app.notification.revoke: Revocar
+app.notification.no_devices: No hay dispositivos suscritos.
+app.notification.test.title: Tus notificaciones funcionan
+app.notification.test.body: '¡Hola, %name%! Esta es una notificación de prueba de Skeleton.'
+app.notification.test.users_title: '👥 Tu directorio de usuarios está a un clic'
+app.notification.test.users_body: '¡Hola, %name%! ✨ Abre esta notificación para visitar la página de usuarios. 🚀'

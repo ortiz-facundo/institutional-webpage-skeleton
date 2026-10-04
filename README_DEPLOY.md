@@ -16,6 +16,55 @@ guide is the FTP-only fallback.
 
 ## 0. Prerequisites — verify these on the server BEFORE you upload
 
+### Notifications and cron
+
+Notifications use the existing MariaDB database; no Redis or persistent worker
+is required. Push is disabled by default and the inbox remains available.
+
+1. Generate VAPID keys once locally:
+   `docker compose exec php bin/console app:notifications:vapid-keys`.
+2. Put those keys in production `.env.local`, set `NOTIFICATION_PUSH_ENABLED=1`,
+   and set `NOTIFICATION_VAPID_SUBJECT=mailto:<real-contact-email>`.
+   Preserve the same keys across updates. Never include secrets in source control.
+3. Verify HTTPS, outgoing HTTPS to `fcm.googleapis.com`, and PHP CLI 8.4 with
+   `curl`, `mbstring`, and `openssl` (elliptic-curve support), plus `bcmath` or
+   `gmp`. The library emits a notice without the math accelerator, which Symfony
+   may convert to an exception. Docker includes BCMath for parity.
+   Apache's `.htaccess` PHP handler does not select the CLI version.
+4. Verify `/sw.js` returns JavaScript, not HTML. The ZIP aliases this URL to
+   `public/sw.js`; it must retain root scope and revalidation headers.
+5. In cPanel → Cron Jobs, use `*` in all five schedule fields, provided the
+   hosting plan permits every-minute jobs. Replace `APP_DIRECTORY` with the
+   actual deployed project root:
+
+   ```text
+   /usr/local/bin/ea-php84 /home/scachico/APP_DIRECTORY/bin/console app:notifications:process --env=prod --no-debug
+   ```
+
+   Confirm the executable with a temporary `/usr/local/bin/ea-php84 -v` cron.
+   The application root contains `bin/console` and `vendor/`, not just public assets.
+   CLI can execute `bin/console` even when the host WAF blocks `/bin/` HTTP URLs.
+6. Configure cron email for errors initially. Successful runs are silent; `-v`
+   prints aggregate outcomes. The worker uses a file lock, at most 50 deliveries,
+   a 45-second budget, and bounded requests. An overlapping invocation skips.
+   This design assumes one application host sharing its `var/` lock file.
+
+Each Chrome desktop/Android device opts in under Account → Notifications. The
+title and short description may appear on the lock screen. Explicit logout
+disables the current device on the server; re-enable it after signing back in.
+Remote revocation disables future sends but cannot retract accepted pushes.
+Subscription changes are blocked during impersonation. The sender rechecks
+active accounts, subscription ownership, and an optional required permission.
+
+Transient failures retry after 1, 2, 4, and 8 minutes; permanent failures and
+exhausted retries remain in `notification_delivery` for inspection. Re-running
+the processor does not resend accepted rows. Inbox and delivery history are
+retained until the recipient is deleted; retention pruning can be introduced
+when a real downstream policy is chosen. Do not truncate the queue during deploys.
+
+`app:dev:test-notification` refuses production. Validate the initial flow locally
+and then through the downstream's real application event after synchronization.
+
 ### 0.1 PHP 8.4 is available
 
 1. Log into cPanel.

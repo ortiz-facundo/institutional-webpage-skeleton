@@ -1,0 +1,32 @@
+{% extends 'backoffice/base.html.twig' %}
+{% block admin_title %}{{ 'app.notification.title'|trans }}{% endblock %}
+{% block admin_body %}
+    <header class="mb-6 flex flex-wrap items-start justify-between gap-4">
+        <div><h1 class="font-serif text-3xl text-stone-900">{{ 'app.notification.title'|trans }}</h1><p class="mt-1 text-sm text-stone-500">{{ 'app.notification.unread_count'|trans({'%count%': unreadCount}) }}</p></div>
+        <a href="{{ path('account_preferences_notifications') }}" class="text-sm text-amber-700">{{ 'app.notification.settings'|trans }}</a>
+    </header>
+    <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <nav class="flex gap-4 text-sm" aria-label="{{ 'app.notification.filters'|trans }}">
+            <a href="{{ path('notification_list') }}" class="{{ not unread ? 'font-semibold text-amber-700' : 'text-stone-500' }}">{{ 'app.notification.all'|trans }}</a>
+            <a href="{{ path('notification_list', {unread: 1}) }}" class="{{ unread ? 'font-semibold text-amber-700' : 'text-stone-500' }}">{{ 'app.notification.unread'|trans }}</a>
+        </nav>
+        <form action="{{ path('notification_read_all') }}" method="post"><input type="hidden" name="_token" value="{{ csrf_token('notification_inbox') }}"><button class="rounded-md bg-stone-900 px-3 py-2 text-sm text-white">{{ 'app.notification.mark_all'|trans }}</button></form>
+    </div>
+    <div class="divide-y divide-stone-200 rounded-lg border border-stone-200 bg-white">
+        {% for item in notifications %}
+            <article class="px-5 py-4 {{ item.unread ? 'border-l-4 border-l-amber-600' : '' }}">
+                <div class="flex items-start justify-between gap-4">
+                    <a href="{{ item.url }}" class="font-medium text-stone-900 hover:text-amber-700">{{ item.title }}</a>
+                    <time datetime="{{ item.createdAt }}" class="shrink-0 text-xs text-stone-500">{{ item.createdAt|date('d/m/Y H:i') }}</time>
+                </div>
+                <p class="mt-1 text-sm text-stone-600">{{ item.body }}</p>
+                {% if item.unread %}<form class="mt-2" action="{{ path('notification_read', {id: item.id}) }}" method="post"><input type="hidden" name="_token" value="{{ csrf_token('notification_inbox') }}"><button class="text-xs text-amber-700">{{ 'app.notification.mark_read'|trans }}</button></form>{% endif %}
+            </article>
+        {% else %}<p class="px-5 py-10 text-center text-sm text-stone-500">{{ 'app.notification.empty'|trans }}</p>{% endfor %}
+    </div>
+    {% if pages > 1 %}<nav class="mt-5 flex justify-between text-sm" aria-label="{{ 'app.notification.pagination'|trans }}">
+        {% if page > 1 %}<a class="text-amber-700" href="{{ path('notification_list', {page: page - 1, unread: unread ? 1 : 0}) }}">{{ 'app.notification.previous'|trans }}</a>{% else %}<span></span>{% endif %}
+        <span class="text-stone-500">{{ page }} / {{ pages }}</span>
+        {% if page < pages %}<a class="text-amber-700" href="{{ path('notification_list', {page: page + 1, unread: unread ? 1 : 0}) }}">{{ 'app.notification.next'|trans }}</a>{% endif %}
+    </nav>{% endif %}
+{% endblock %}
