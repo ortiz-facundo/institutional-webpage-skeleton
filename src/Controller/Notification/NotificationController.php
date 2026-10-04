@@ -4,27 +4,42 @@ declare(strict_types=1);
 
 namespace App\Controller\Notification;
 
+use App\Controller\CrudListQueryTrait;
 use App\Entity\Administration\User;
 use App\Service\Notification\NotificationInbox;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\{JsonResponse, Request, Response};
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
+use Symfony\Contracts\Translation\TranslatorInterface;
 
 #[IsGranted('IS_AUTHENTICATED_FULLY')]
 final class NotificationController extends AbstractController
 {
+    use CrudListQueryTrait;
+
+    private const array PER_PAGE_OPTIONS = [10, 25, 50];
+
     #[Route('/account/notifications', name: 'notification_list', methods: ['GET'])]
     public function list(Request $request, NotificationInbox $inbox): Response
     {
         /** @var User $user */
         $user = $this->getUser();
-        $unread = $request->query->getBoolean('unread');
-        $pages = max(1, (int) ceil($inbox->count($user, $unread) / 20));
-        $page = min($pages, max(1, $request->query->getInt('page', 1)));
+        $filter = $this->resolveFilter($request);
+        $unread = $filter === 'unread';
+        $archived = $filter === 'archived';
+        $total = $inbox->count($user, $unread, $archived);
+        $perPage = $this->resolvePerPage($request->query->get('per_page'), self::PER_PAGE_OPTIONS, 25);
+        $pages = max(1, (int) ceil($total / $perPage));
+        $page = min($pages, $this->resolvePage($request->query->get('page')));
         return $this->render('notification/index.html.twig', [
-            'notifications' => array_map($inbox->present(...), $inbox->list($user, $page, $unread)),
-            'unreadCount' => $inbox->count($user, true), 'page' => $page, 'pages' => $pages, 'unread' => $unread,
+            'notifications' => array_map($inbox->present(...), $inbox->list($user, $page, $unread, $perPage, $archived)),
+            'inboxCount' => $filter === 'inbox' ? $total : $inbox->count($user),
+            'archivedCount' => $archived ? $total : $inbox->count($user, archived: true),
+            'unreadCount' => $inbox->count($user, true), 'unread' => $unread, 'archived' => $archived, 'filter' => $filter,
+            'page' => $page, 'per_page' => $perPage, 'per_page_options' => self::PER_PAGE_OPTIONS,
+            'total' => $total, 'total_pages' => $pages,
+            'current_url' => $request->getRequestUri(), 'current_params' => $request->query->all(),
         ]);
     }
 
@@ -52,7 +67,7 @@ final class NotificationController extends AbstractController
     {
         $this->checkToken($request);
         $inbox->markAsRead($this->getUser(), $id);
-        return $request->headers->get('Accept') === 'application/json' ? $this->json(['ok' => true]) : $this->redirectToRoute('notification_list');
+        return $this->mutationResponse($request);
     }
 
     #[Route('/account/notifications/read-all', name: 'notification_read_all', methods: ['POST'])]
@@ -60,7 +75,46 @@ final class NotificationController extends AbstractController
     {
         $this->checkToken($request);
         $inbox->markAllAsRead($this->getUser());
-        return $request->headers->get('Accept') === 'application/json' ? $this->json(['ok' => true]) : $this->redirectToRoute('notification_list');
+        return $this->mutationResponse($request);
+    }
+
+    #[Route('/account/notifications/{id}/archive', name: 'notification_archive', requirements: ['id' => '\d+'], methods: ['POST'])]
+    public function archive(int $id, Request $request, NotificationInbox $inbox, TranslatorInterface $translator): Response
+    {
+        $this->checkToken($request);
+        try {
+            $inbox->archive($this->getUser(), $id);
+        } catch (\DomainException $e) {
+            $message = $translator->trans($e->getMessage());
+            if ($request->headers->get('Accept') === 'application/json') { return $this->json(['error' => $message], 409); }
+            $this->addFlash('error', $message);
+        }
+        return $this->mutationResponse($request);
+    }
+
+    #[Route('/account/notifications/{id}/restore', name: 'notification_restore', requirements: ['id' => '\d+'], methods: ['POST'])]
+    public function restore(int $id, Request $request, NotificationInbox $inbox): Response
+    {
+        $this->checkToken($request);
+        $inbox->restore($this->getUser(), $id);
+        return $this->mutationResponse($request);
+    }
+
+    private function resolveFilter(Request $request): string
+    {
+        // Retain existing bookmarked ?unread=1 URLs.
+        $filter = $request->query->getString('filter', $request->query->getBoolean('unread') ? 'unread' : 'inbox');
+        return in_array($filter, ['inbox', 'unread', 'archived'], true) ? $filter : 'inbox';
+    }
+
+    private function mutationResponse(Request $request): Response
+    {
+        if ($request->headers->get('Accept') === 'application/json') { return $this->json(['ok' => true]); }
+        return $this->redirectToRoute('notification_list', [
+            'filter' => $this->resolveFilter($request),
+            'page' => $this->resolvePage($request->query->get('page')),
+            'per_page' => $this->resolvePerPage($request->query->get('per_page'), self::PER_PAGE_OPTIONS, 25),
+        ]);
     }
 
     private function checkToken(Request $request): void

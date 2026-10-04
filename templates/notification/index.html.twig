@@ -1,32 +1,124 @@
 {% extends 'backoffice/base.html.twig' %}
 {% block admin_title %}{{ 'app.notification.title'|trans }}{% endblock %}
 {% block admin_body %}
-    <header class="mb-6 flex flex-wrap items-start justify-between gap-4">
-        <div><h1 class="font-serif text-3xl text-stone-900">{{ 'app.notification.title'|trans }}</h1><p class="mt-1 text-sm text-stone-500">{{ 'app.notification.unread_count'|trans({'%count%': unreadCount}) }}</p></div>
-        <a href="{{ path('account_preferences_notifications') }}" class="text-sm text-amber-700">{{ 'app.notification.settings'|trans }}</a>
-    </header>
+    {% include 'shared/crud/_breadcrumbs.html.twig' with {trail: [
+        {label: 'app.administration.crud.breadcrumbs.dashboard'|trans, path: 'backoffice_dashboard'},
+        {label: 'app.notification.title'|trans, path: null},
+    ]} %}
+
+    {% embed 'shared/crud/_list_title.html.twig' with {title: 'app.notification.title'|trans} %}
+        {% block list_title_subtitle %}
+            {{ archived ? 'app.notification.archived_count'|trans({'%count%': archivedCount}) : (unreadCount ? 'app.notification.unread_count'|trans({'%count%': unreadCount}) : 'app.notification.all_read'|trans) }}
+        {% endblock %}
+        {% block list_title_actions %}
+            <a href="{{ path('account_preferences_notifications') }}"
+               title="{{ 'app.notification.settings'|trans }}" aria-label="{{ 'app.notification.settings'|trans }}"
+               class="inline-flex h-9 w-9 items-center justify-center self-end rounded-md border border-stone-300 bg-white text-stone-600 shadow-sm hover:bg-stone-50 hover:text-stone-900 focus:outline-none focus:ring-2 focus:ring-amber-600 focus:ring-offset-2 sm:self-auto">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true" class="h-5 w-5">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.325.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 0 1 1.37.49l1.296 2.247a1.125 1.125 0 0 1-.26 1.431l-1.003.827c-.293.241-.438.613-.43.992a7.723 7.723 0 0 1 0 .255c-.008.378.137.75.43.991l1.004.827c.424.35.534.955.26 1.43l-1.298 2.247a1.125 1.125 0 0 1-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.47 6.47 0 0 1-.22.128c-.331.183-.581.495-.644.869l-.213 1.281c-.09.543-.56.94-1.11.94h-2.594c-.55 0-1.019-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 0 1-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 0 1-1.369-.49l-1.297-2.247a1.125 1.125 0 0 1 .26-1.431l1.004-.827c.292-.24.437-.613.43-.991a6.932 6.932 0 0 1 0-.255c.007-.38-.138-.751-.43-.992l-1.004-.827a1.125 1.125 0 0 1-.26-1.43l1.297-2.247a1.125 1.125 0 0 1 1.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.086.22-.128.332-.183.582-.495.644-.869l.214-1.28Z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+                </svg>
+            </a>
+        {% endblock %}
+    {% endembed %}
+
+    {# Toolbar row, same shell as shared/crud/_list_toolbar: filters left, action right. #}
     <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <nav class="flex gap-4 text-sm" aria-label="{{ 'app.notification.filters'|trans }}">
-            <a href="{{ path('notification_list') }}" class="{{ not unread ? 'font-semibold text-amber-700' : 'text-stone-500' }}">{{ 'app.notification.all'|trans }}</a>
-            <a href="{{ path('notification_list', {unread: 1}) }}" class="{{ unread ? 'font-semibold text-amber-700' : 'text-stone-500' }}">{{ 'app.notification.unread'|trans }}</a>
+        <nav class="inline-flex max-w-full flex-wrap rounded-lg bg-stone-200/70 p-0.5 text-sm" aria-label="{{ 'app.notification.filters'|trans }}">
+            {% for tab in [
+                {label: 'app.notification.inbox'|trans, active: filter == 'inbox', count: inboxCount, params: {}},
+                {label: 'app.notification.unread'|trans, active: unread, count: unreadCount, params: {filter: 'unread'}},
+                {label: 'app.notification.archived'|trans, active: archived, count: archivedCount, params: {filter: 'archived'}},
+            ] %}
+                <a href="{{ path('notification_list', tab.params|merge(per_page != 25 ? {per_page: per_page} : {})) }}"
+                   {% if tab.active %}aria-current="page"{% endif %}
+                   class="inline-flex items-center gap-2 rounded-md px-3 py-1.5 font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-600 {{ tab.active ? 'bg-white text-stone-900 shadow-sm' : 'text-stone-600 hover:text-stone-900' }}">
+                    {{ tab.label }}
+                    <span class="min-w-5 rounded-full px-1.5 text-center text-xs tabular-nums leading-5 {{ tab.active and tab.params ? 'bg-amber-100 text-amber-800' : 'bg-stone-100 text-stone-600' }}">{{ tab.count }}</span>
+                </a>
+            {% endfor %}
         </nav>
-        <form action="{{ path('notification_read_all') }}" method="post"><input type="hidden" name="_token" value="{{ csrf_token('notification_inbox') }}"><button class="rounded-md bg-stone-900 px-3 py-2 text-sm text-white">{{ 'app.notification.mark_all'|trans }}</button></form>
+        {% if not archived %}
+        <form action="{{ path('notification_read_all', {filter: filter, per_page: per_page, page: page}) }}" method="post">
+            <input type="hidden" name="_token" value="{{ csrf_token('notification_inbox') }}">
+            <button {{ unreadCount ? '' : 'disabled' }}
+                    class="inline-flex items-center gap-2 rounded-md border border-stone-300 bg-white px-3 py-2 text-sm font-medium text-stone-700 shadow-sm hover:bg-stone-50 focus:outline-none focus:ring-2 focus:ring-amber-600 focus:ring-offset-2 disabled:cursor-default disabled:text-stone-300 disabled:shadow-none disabled:hover:bg-white">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true" class="h-4 w-4">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+                </svg>
+                {{ 'app.notification.mark_all'|trans }}
+            </button>
+        </form>
+        {% endif %}
     </div>
-    <div class="divide-y divide-stone-200 rounded-lg border border-stone-200 bg-white">
-        {% for item in notifications %}
-            <article class="px-5 py-4 {{ item.unread ? 'border-l-4 border-l-amber-600' : '' }}">
-                <div class="flex items-start justify-between gap-4">
-                    <a href="{{ item.url }}" class="font-medium text-stone-900 hover:text-amber-700">{{ item.title }}</a>
-                    <time datetime="{{ item.createdAt }}" class="shrink-0 text-xs text-stone-500">{{ item.createdAt|date('d/m/Y H:i') }}</time>
-                </div>
-                <p class="mt-1 text-sm text-stone-600">{{ item.body }}</p>
-                {% if item.unread %}<form class="mt-2" action="{{ path('notification_read', {id: item.id}) }}" method="post"><input type="hidden" name="_token" value="{{ csrf_token('notification_inbox') }}"><button class="text-xs text-amber-700">{{ 'app.notification.mark_read'|trans }}</button></form>{% endif %}
-            </article>
-        {% else %}<p class="px-5 py-10 text-center text-sm text-stone-500">{{ 'app.notification.empty'|trans }}</p>{% endfor %}
-    </div>
-    {% if pages > 1 %}<nav class="mt-5 flex justify-between text-sm" aria-label="{{ 'app.notification.pagination'|trans }}">
-        {% if page > 1 %}<a class="text-amber-700" href="{{ path('notification_list', {page: page - 1, unread: unread ? 1 : 0}) }}">{{ 'app.notification.previous'|trans }}</a>{% else %}<span></span>{% endif %}
-        <span class="text-stone-500">{{ page }} / {{ pages }}</span>
-        {% if page < pages %}<a class="text-amber-700" href="{{ path('notification_list', {page: page + 1, unread: unread ? 1 : 0}) }}">{{ 'app.notification.next'|trans }}</a>{% endif %}
-    </nav>{% endif %}
+
+    {% if notifications is empty %}
+        {% include 'shared/crud/_empty_state.html.twig' with {
+            message: (archived ? 'app.notification.empty_archived' : (unread ? 'app.notification.empty_unread' : 'app.notification.empty'))|trans,
+        } only %}
+    {% else %}
+        {# Same Today / Earlier split as the bell panel. #}
+        {% set today = 'now'|date('Y-m-d') %}
+        {% for group in [
+            {label: 'app.notification.today'|trans, items: notifications|filter(n => n.createdAt|date('Y-m-d') == today)},
+            {label: 'app.notification.earlier'|trans, items: notifications|filter(n => n.createdAt|date('Y-m-d') != today)},
+        ] %}
+            {% if group.items is not empty %}
+                <section class="mb-6">
+                    <h2 class="mb-2 text-xs font-semibold uppercase tracking-wider text-stone-500">{{ group.label }}</h2>
+                    <div class="divide-y divide-stone-200 overflow-hidden rounded-lg border border-stone-200 bg-white shadow-sm">
+                        {% for item in group.items %}
+                            <article class="group relative flex gap-4 px-4 py-3 hover:bg-stone-50 {{ item.unread ? 'bg-amber-50/60 shadow-[inset_3px_0_0_0_theme(colors.amber.600)]' : '' }}">
+                                <span class="mt-0.5 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full {{ item.unread ? 'bg-amber-100 text-amber-800' : 'bg-stone-100 text-stone-500' }}">
+                                    <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="{{ item.icon }}"/></svg>
+                                </span>
+                                <div class="min-w-0 flex-1">
+                                    {# Stretched link: the whole row opens the notification; the action sits above it. #}
+                                    <a href="{{ item.url }}"
+                                       {% if item.unread %}data-notification-read-url="{{ path('notification_read', {id: item.id}) }}" data-notification-read-token="{{ csrf_token('notification_inbox') }}"{% endif %}
+                                       class="block text-sm leading-snug after:absolute after:inset-0 focus:outline-none focus-visible:underline {{ item.unread ? 'font-semibold text-stone-900' : 'text-stone-800' }}">{{ item.title }}</a>
+                                    <p class="mt-0.5 line-clamp-2 text-sm text-stone-500">{{ item.body }}</p>
+                                    <div class="mt-1.5 flex flex-wrap items-center gap-2">
+                                        <span class="inline-flex items-center rounded-md bg-stone-100 px-2 py-0.5 text-xs font-medium text-stone-600">{{ item.moduleLabel }}</span>
+                                        <time datetime="{{ item.createdAt }}" title="{{ item.createdAt|date('d/m/Y H:i') }}" data-notification-time
+                                              class="text-xs text-stone-400">{{ item.createdAt|date('d/m/Y H:i') }}</time>
+                                    </div>
+                                </div>
+                                {% set action = item.archived ? 'restore' : (item.unread ? 'read' : 'archive') %}
+                                {% set action_label = item.archived ? 'app.notification.restore' : (item.unread ? 'app.notification.mark_read' : 'app.notification.archive') %}
+                                    <div class="relative z-10 flex w-8 shrink-0 flex-col items-center gap-1.5">
+                                        {% if item.unread %}<span aria-hidden="true" class="mt-1.5 h-2 w-2 rounded-full bg-amber-600"></span>{% endif %}
+                                        <form action="{{ path('notification_' ~ action, {id: item.id, filter: filter, per_page: per_page, page: page}) }}" method="post">
+                                            <input type="hidden" name="_token" value="{{ csrf_token('notification_inbox') }}">
+                                            <button title="{{ action_label|trans }}" aria-label="{{ action_label|trans }}" data-notification-action="{{ action }}"
+                                                    class="inline-flex h-8 w-8 items-center justify-center rounded-md text-amber-700 hover:bg-amber-50 focus:opacity-100 focus:outline-none focus:ring-2 focus:ring-amber-600 focus:ring-offset-2 group-hover:opacity-100 [@media(hover:hover)]:opacity-0">
+                                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true" class="h-4 w-4">
+                                                    {% if action == 'read' %}
+                                                        <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+                                                    {% elseif action == 'archive' %}
+                                                        <path stroke-linecap="round" stroke-linejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 0 1-2.247 2.118H6.622a2.25 2.25 0 0 1-2.247-2.118L3.75 7.5m6 3h4.5M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125Z" />
+                                                    {% else %}
+                                                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 14.25 4.5 9.75m0 0L9 5.25M4.5 9.75h9.75a6 6 0 0 1 0 12h-3" />
+                                                    {% endif %}
+                                                </svg>
+                                            </button>
+                                        </form>
+                                    </div>
+                            </article>
+                        {% endfor %}
+                    </div>
+                </section>
+            {% endif %}
+        {% endfor %}
+    {% endif %}
+
+    {% include 'shared/crud/_pagination.html.twig' with {
+        page: page,
+        per_page: per_page,
+        total: total,
+        total_pages: total_pages,
+        current_url: current_url,
+        current_params: current_params,
+        per_page_options: per_page_options,
+    } %}
 {% endblock %}

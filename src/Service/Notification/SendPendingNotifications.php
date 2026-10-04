@@ -36,7 +36,8 @@ final class SendPendingNotifications
             $user = $delivery->getNotification()->getRecipient();
             $subscription = $delivery->getPushSubscription();
             $permission = $delivery->getNotification()->getRequiredPermission();
-            if ($user->getState() !== User::USER_STATE_ACTIVE || $subscription === null || !$subscription->isEnabled()
+            if ($delivery->getNotification()->getArchivedAt() !== null
+                || $user->getState() !== User::USER_STATE_ACTIVE || $subscription === null || !$subscription->isEnabled()
                 || $subscription->getUser()->getId() !== $user->getId()
                 || ($permission !== null && !in_array($permission, $user->getRoles(), true))) {
                 $delivery->skip();

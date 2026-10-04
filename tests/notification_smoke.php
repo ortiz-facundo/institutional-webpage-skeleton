@@ -29,6 +29,7 @@ $other = new App\Entity\Administration\User();
 $other->setEmail('notification-smoke-'.bin2hex(random_bytes(6)).'@skeleton.local');
 $other->setState(App\Entity\Administration\User::USER_STATE_ACTIVE);
 $initial = $inbox->count($user);
+$initialArchived = $inbox->count($user, archived: true);
 $connection->beginTransaction();
 try {
     $em->persist($other);
@@ -42,6 +43,12 @@ try {
     $check($inbox->count($user) === $initial + 1, 'single inbox record');
     $deliveries = $em->getRepository(App\Entity\Notification\NotificationDelivery::class)->findBy(['notification' => $notification, 'pushSubscription' => $subscription]);
     $check(count($deliveries) === 1, 'single per-device delivery');
+    try { $inbox->archive($user, $notification->getId()); throw new RuntimeException('Unread notification archived.'); }
+    catch (DomainException $e) {
+        $check($e->getMessage() === 'app.notification.archive_requires_read' && $em->isOpen(), 'unread archive rejected without invalidating the EntityManager');
+    }
+    try { $inbox->archive($other, $notification->getId()); throw new RuntimeException('Cross-user archive allowed.'); }
+    catch (Symfony\Component\HttpKernel\Exception\NotFoundHttpException) { $check(true, 'cross-user archive rejected'); }
     try { $inbox->findOwned($other, $notification->getId()); throw new RuntimeException('Cross-user access allowed.'); }
     catch (Symfony\Component\HttpKernel\Exception\NotFoundHttpException) { $check(true, 'cross-user inbox access rejected'); }
     try { $subscriptions->disable($other, $subscription->getId()); throw new RuntimeException('Cross-user revoke allowed.'); }
@@ -49,6 +56,31 @@ try {
     $check(!$subscriptions->isAllowedEndpoint('https://127.0.0.1/fcm/send/test') && !$subscriptions->isAllowedEndpoint('https://fcm.googleapis.com.evil.test/fcm/send/test') && !$subscriptions->isAllowedEndpoint('https://user@fcm.googleapis.com/fcm/send/test'), 'untrusted endpoints rejected');
     $inbox->markAsRead($user, $notification->getId());
     $check($notification->getReadAt() !== null, 'read action persisted');
+    // MariaDB DATETIME stores whole seconds; compare persisted values rather
+    // than the pre-flush PHP timestamp's discarded microseconds.
+    $em->refresh($notification);
+    $readAt = $notification->getReadAt();
+    $deliveryCount = $em->getRepository(App\Entity\Notification\NotificationDelivery::class)->count(['notification' => $notification]);
+    $inbox->archive($user, $notification->getId());
+    $em->refresh($notification);
+    $archivedAt = $notification->getArchivedAt();
+    $check($archivedAt !== null && $notification->getReadAt() == $readAt, 'archive preserves read timestamp');
+    $check($inbox->count($user) === $initial && $inbox->count($user, archived: true) === $initialArchived + 1, 'archive moves record between inbox and archive counts');
+    $check($inbox->present($notification)['archived'] && !$inbox->present($notification)['unread'], 'archived presentation remains read');
+    $check(!in_array($notification->getId(), array_map(static fn ($n) => $n->getId(), $inbox->list($user)), true), 'archived notification excluded from default feed');
+    $em->refresh($deliveries[0]);
+    $check($deliveries[0]->getStatus() === App\Entity\Notification\NotificationDelivery::STATUS_SKIPPED, 'archive cancels pending push delivery');
+    $inbox->archive($user, $notification->getId());
+    $check($notification->getArchivedAt() == $archivedAt, 'repeated archive preserves archive timestamp');
+    try { $inbox->restore($other, $notification->getId()); throw new RuntimeException('Cross-user restore allowed.'); }
+    catch (Symfony\Component\HttpKernel\Exception\NotFoundHttpException) { $check(true, 'cross-user restore rejected'); }
+    $inbox->restore($user, $notification->getId());
+    $inbox->restore($user, $notification->getId());
+    $check($notification->getArchivedAt() === null && $notification->getReadAt() == $readAt, 'restore is idempotent and keeps original read timestamp');
+    $check($inbox->count($user) === $initial + 1 && $inbox->count($user, archived: true) === $initialArchived, 'restored record returns to inbox counts');
+    $check($em->getRepository(App\Entity\Notification\NotificationDelivery::class)->count(['notification' => $notification]) === $deliveryCount
+        && $em->getRepository(App\Entity\Notification\NotificationDelivery::class)->count(['notification' => $notification, 'status' => App\Entity\Notification\NotificationDelivery::STATUS_PENDING]) === 0,
+        'restore never creates or revives push delivery');
     $notification2 = $creator->execute($user, 'smoke.two', 'app.notification.test.title', 'app.notification.test.body', channels: []);
     $inbox->markAllAsRead($user);
     $em->refresh($notification2);

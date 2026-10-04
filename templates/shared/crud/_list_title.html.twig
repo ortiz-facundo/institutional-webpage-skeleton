@@ -26,11 +26,16 @@
                                             the count line also uses the
                                             "Showing X–Y of Z" copy, even
                                             without an active filter
+
+      Blocks (override via `{% embed %}` instead of `{% include %}`):
+        list_title_subtitle   the count line under the title
+        list_title_actions    the right-hand slot (default: the "New" button)
 #}
 <div class="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
     <div>
         <h1 class="text-2xl font-serif text-stone-900">{{ title }}</h1>
         <p class="text-sm text-stone-500 mt-1">
+            {% block list_title_subtitle %}
             {% set _total = total is defined and total is not null ? total : items|default([])|length %}
             {% if (has_any_filter|default(false) or total_pages|default(1) > 1) and _total > 0 %}
                 {{ 'app.shared.pagination.showing'|trans({
@@ -41,8 +46,10 @@
             {% else %}
                 {{ 'app.administration.crud.total_items'|trans({'%count%': _total}) }}
             {% endif %}
+            {% endblock %}
         </p>
     </div>
+    {% block list_title_actions %}
     {% if new_path is defined and new_path and (new_permission|default(null) is null or is_granted(new_permission)) %}
         <a href="{{ path(new_path) }}"
            class="inline-flex items-center gap-2 rounded-md bg-stone-900 px-4 py-2 text-sm font-medium text-stone-50 shadow-sm hover:bg-stone-800 focus:outline-none focus:ring-2 focus:ring-amber-600 focus:ring-offset-2">
@@ -50,4 +57,5 @@
             <span>{{ new_label|default('app.administration.crud.new'|trans) }}</span>
         </a>
     {% endif %}
+    {% endblock %}
 </div>

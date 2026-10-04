@@ -1,21 +1,32 @@
 app.notification.title: Notificaciones
 app.notification.view_all: Ver todas
-app.notification.empty: Todavía no tienes notificaciones aquí.
+app.notification.empty: Tu bandeja de notificaciones está vacía.
 app.notification.error: Algo salió mal. Actualiza la página e inténtalo de nuevo.
 app.notification.unread_count: '%count% notificaciones sin leer'
+app.notification.all_read: Estás al día
+app.notification.empty_unread: No tienes notificaciones sin leer.
+app.notification.module.account: Cuenta
+app.notification.module.administration: Administración
+app.notification.module.backoffice: Backoffice
+app.notification.module.dev: Dev
+app.notification.module.security: Seguridad
 app.notification.settings: Ajustes de notificaciones
 app.notification.filters: Filtrar notificaciones
 app.notification.all: Todas
 app.notification.unread: Sin leer
+app.notification.inbox: Bandeja
+app.notification.archived: Archivadas
+app.notification.archive: Archivar
+app.notification.restore: Restaurar a la bandeja
+app.notification.archived_count: '%count% notificaciones archivadas'
+app.notification.empty_archived: No tienes notificaciones archivadas.
+app.notification.archive_requires_read: Abre esta notificación o márcala como leída antes de archivarla.
 app.notification.mark_all: Marcar todas como leídas
 app.notification.mark_read: Marcar como leída
 app.notification.today: Hoy
 app.notification.earlier: Anteriores
 app.notification.just_now: Ahora mismo
 app.notification.new_count: '%count% nuevas'
-app.notification.pagination: Páginas de notificaciones
-app.notification.previous: Anterior
-app.notification.next: Siguiente
 app.notification.device_help: Activa las notificaciones de Chrome por separado en cada ordenador o teléfono Android. Los títulos y las descripciones breves pueden aparecer en tu pantalla de bloqueo. Tu bandeja funciona aunque las notificaciones push estén desactivadas.
 app.notification.enable: Activar en este dispositivo
 app.notification.disable: Desactivar en este dispositivo
@@ -32,3 +43,9 @@ app.notification.test.title: Tus notificaciones funcionan
 app.notification.test.body: '¡Hola, %name%! Esta es una notificación de prueba de Skeleton.'
 app.notification.test.users_title: '👥 Tu directorio de usuarios está a un clic'
 app.notification.test.users_body: '¡Hola, %name%! ✨ Abre esta notificación para visitar la página de usuarios. 🚀'
+app.notification.test.warning_title: '⚠️ Hay algo que requiere tu atención'
+app.notification.test.warning_body: '¡Hola, %name%! Esta es una demostración visual de un aviso. Abre tu bandeja para revisar los detalles.'
+app.notification.test.security_title: '🛡️ Mantén tu cuenta protegida'
+app.notification.test.security_body: 'Esta es una demostración de una notificación de seguridad. Abre los ajustes de contraseña para ver adónde te lleva el aviso.'
+app.notification.test.download_title: '📥 Tu informe está listo · Prueba'
+app.notification.test.download_body: '✨ Así podría verse un aviso de informe disponible. Abre tu bandeja; no se ha generado ningún informe real.'

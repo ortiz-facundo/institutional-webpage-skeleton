@@ -1,7 +1,17 @@
 {% extends 'account/base.html.twig' %}
 {% block settings_title %}{{ 'app.notification.settings'|trans }}{% endblock %}
 {% block settings_content %}
-    <h2 class="mb-4 font-serif text-xl">{{ 'app.notification.settings'|trans }}</h2>
+    <div class="mb-6 flex flex-wrap items-center justify-between gap-4">
+        <nav aria-label="{{ 'app.account.index.settings'|trans }}" class="text-sm">
+            <a href="{{ path('account_profile_settings') }}"
+               class="text-stone-500 hover:text-stone-900">{{ 'app.account.index.settings'|trans }}</a>
+            <span aria-hidden="true" class="mx-2 text-stone-400">&rsaquo;</span>
+            <span aria-current="page" class="font-medium text-stone-900">{{ 'app.notification.settings'|trans }}</span>
+        </nav>
+        <div class="shrink-0">
+            {% include 'account/_back_link.html.twig' %}
+        </div>
+    </div>
     <div class="rounded-lg border border-stone-200 bg-white p-5" data-push-settings
          data-key="{{ publicKey }}" data-token="{{ csrf_token('notification_subscription') }}"
          data-register="{{ path('notification_subscribe') }}" data-status="{{ path('notification_subscription_status') }}"

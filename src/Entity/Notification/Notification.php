@@ -11,6 +11,7 @@ use Doctrine\ORM\Mapping as ORM;
 #[ORM\Table(name: 'notification')]
 #[ORM\Index(columns: ['recipient_id', 'created_at'], name: 'notification_inbox_idx')]
 #[ORM\Index(columns: ['recipient_id', 'read_at'], name: 'notification_unread_idx')]
+#[ORM\Index(columns: ['recipient_id', 'archived_at', 'created_at'], name: 'notification_archive_idx')]
 #[ORM\UniqueConstraint(name: 'notification_event_unique', columns: ['recipient_id', 'event_key'])]
 class Notification
 {
@@ -51,6 +52,9 @@ class Notification
     #[ORM\Column(type: 'datetime_immutable', nullable: true)]
     private ?\DateTimeImmutable $readAt = null;
 
+    #[ORM\Column(type: 'datetime_immutable', nullable: true)]
+    private ?\DateTimeImmutable $archivedAt = null;
+
     public function __construct(User $recipient, string $type, string $eventKey, string $titleKey, string $bodyKey, array $parameters, string $route, array $routeParameters, ?string $requiredPermission)
     {
         $this->recipient = $recipient;
@@ -76,5 +80,7 @@ class Notification
     public function getRequiredPermission(): ?string { return $this->requiredPermission; }
     public function getCreatedAt(): \DateTimeImmutable { return $this->createdAt; }
     public function getReadAt(): ?\DateTimeImmutable { return $this->readAt; }
+    public function getArchivedAt(): ?\DateTimeImmutable { return $this->archivedAt; }
+    public function setArchivedAt(?\DateTimeImmutable $archivedAt): void { $this->archivedAt = $archivedAt; }
     public function markAsRead(): void { $this->readAt ??= new \DateTimeImmutable(); }
 }

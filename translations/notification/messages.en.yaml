@@ -1,21 +1,32 @@
 app.notification.title: Notifications
 app.notification.view_all: View all
-app.notification.empty: You have no notifications here yet.
+app.notification.empty: Your notification inbox is empty.
 app.notification.error: Something went wrong. Refresh the page and try again.
 app.notification.unread_count: '%count% unread notifications'
+app.notification.all_read: You're all caught up
+app.notification.empty_unread: You have no unread notifications.
+app.notification.module.account: Account
+app.notification.module.administration: Administration
+app.notification.module.backoffice: Backoffice
+app.notification.module.dev: Dev
+app.notification.module.security: Security
 app.notification.settings: Notification settings
 app.notification.filters: Filter notifications
 app.notification.all: All
 app.notification.unread: Unread
+app.notification.inbox: Inbox
+app.notification.archived: Archived
+app.notification.archive: Archive
+app.notification.restore: Restore to inbox
+app.notification.archived_count: '%count% archived notifications'
+app.notification.empty_archived: You have no archived notifications.
+app.notification.archive_requires_read: Open this notification or mark it as read before archiving it.
 app.notification.mark_all: Mark all as read
 app.notification.mark_read: Mark as read
 app.notification.today: Today
 app.notification.earlier: Earlier
 app.notification.just_now: Just now
 app.notification.new_count: '%count% new'
-app.notification.pagination: Notification pages
-app.notification.previous: Previous
-app.notification.next: Next
 app.notification.device_help: Enable Chrome notifications separately on each computer or Android phone. Titles and short descriptions may appear on your lock screen. Your inbox works even when push is disabled.
 app.notification.enable: Enable on this device
 app.notification.disable: Disable on this device
@@ -32,3 +43,9 @@ app.notification.test.title: Your notifications are working
 app.notification.test.body: 'Hello %name%! This is a test notification from Skeleton.'
 app.notification.test.users_title: '👥 Your user directory is one click away'
 app.notification.test.users_body: 'Hi %name%! ✨ Open this notification to visit the Users page. 🚀'
+app.notification.test.warning_title: '⚠️ Something needs your attention'
+app.notification.test.warning_body: 'Hi %name%! This is a visual demo of an alert. Open your inbox to review the details.'
+app.notification.test.security_title: '🛡️ Keep your account protected'
+app.notification.test.security_body: 'This is a security notification demo. Open your password settings to see where this alert takes you.'
+app.notification.test.download_title: '📥 Your report is ready · Demo'
+app.notification.test.download_body: '✨ This is how a report-ready notification could look. It opens your inbox; no actual report has been generated.'

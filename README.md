@@ -69,6 +69,9 @@ docker compose exec php bin/console app:dev:test-notification test@skeleton.loca
 docker compose exec php bin/console app:notifications:process -v
 # Emoji/click-through demonstration (recipient needs permission to manage users):
 docker compose exec php bin/console app:dev:test-notification test@skeleton.local --users
+docker compose exec php bin/console app:dev:test-notification test@skeleton.local --variant=warning
+docker compose exec php bin/console app:dev:test-notification test@skeleton.local --variant=security
+docker compose exec php bin/console app:dev:test-notification test@skeleton.local --variant=download
 docker compose exec php bin/console app:notifications:process -v
 docker compose exec php php tests/notification_smoke.php
 node tests/notification_worker_click.cjs
@@ -98,6 +101,11 @@ are involved. Only Web Push is implemented; an email sender can be added as a
 new concrete service when required. Read actions require ownership and CSRF;
 GET links never mutate read state. Native notification clicks request a new tab,
 preserving existing backoffice tabs and unsaved forms. Push-service acceptance is not proof of display.
+The inbox has Inbox / Unread / Archived filters. Unread rows offer Mark as read;
+read, non-archived rows offer Archive; archived rows offer Restore to inbox.
+Only read notifications can be archived (also enforced server-side). Archiving
+removes the item from the bell/feed and cancels pending push deliveries. Restore
+preserves the original read timestamp and never queues or revives a delivery.
 Notifications already accepted cannot be recalled and interrupted sends may be
 repeated. Browser notification tags reduce duplicate display.
 

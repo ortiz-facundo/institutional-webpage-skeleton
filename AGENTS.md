@@ -470,14 +470,25 @@ permissions from the canonical `App\Security\Permission` catalog.
 
 The bell and inbox live under `templates/notification/`; device settings are
 linked from Account. The bell sits in the sidebar footer at `lg`+ and in the
-mobile top bar below it. Panel rows show a Heroicon per notification `type`:
-register new types in `TYPE_ICONS` at the top of `assets/js/notifications.js`
-(exact type, then module prefix before the first dot, then the bell). All visible strings are in bilingual notification catalogs.
+mobile top bar below it. Inbox and panel rows show a Heroicon per notification
+`type`: register new types in `NotificationIcon::TYPES`
+(`src/Service/Notification/NotificationIcon.php`; exact type, then module prefix
+before the first dot, then the bell). Rows also carry a module tag: the type's
+prefix, labelled by `app.notification.module.<prefix>` (falls back to the
+capitalized prefix). `NotificationInbox::present()` returns both, so Twig and
+`assets/js/notifications.js` never keep their own maps. The inbox reuses the
+shared CRUD chrome (`_breadcrumbs`, `_list_title` via `embed`, `_empty_state`,
+`_pagination`). All visible strings are in bilingual notification catalogs.
 The root-scoped `public/sw.js` handles push only, never caches backoffice pages.
 Only Chrome desktop/Android endpoints are currently allowed. Explicit logout
 detaches the browser subscription; impersonation blocks subscription mutations.
 Native notification clicks open a new browsing context rather than navigating
 an existing backoffice tab, so notification interactions do not discard forms.
+Archive state is `Notification::archivedAt`: only read items can be archived,
+through `NotificationInbox`. Unread rows show Mark as read, read inbox rows show
+Archive, and archived rows show Restore. Archived items are excluded from the
+bell/feed and inbox/unread counts. Archive cancels pending deliveries; restore
+retains `readAt` and never requeues pushes. All mutations require ownership + CSRF.
 
 `app:notifications:process` is a bounded, flock-protected cron command (single
 host); `NotificationDelivery` is its persistent queue. Dev tests use
