@@ -6,9 +6,9 @@
   `5568b5a` (clean source at inspection).
 - Both source repositories were inspected read-only and retain their existing work.
 
-The institutional repository preserves the backoffice history; removing the
-backoffice files is an intentional extraction in the new repository's working
-tree. Composer retains compatible existing locked versions while removing unused
+The institutional repository preserves the backoffice history. The public-only
+foundation is committed as `9a1d907`. Composer retains compatible existing locked
+versions while removing unused
 backoffice dependencies and adding functional test tools. Nova marketing layouts,
 company categories, branding, sender/recipient defaults and deployment installer
 are not part of this foundation.
@@ -19,7 +19,7 @@ The reusable contact module lives under `src/{Controller,Form,Mailer}` and
 ## Dependency baseline
 
 Initialization preserves Vite 5 and Tailwind 3.4 compatibility with the existing
-projects. Composer validation/audit passes. The npm audit currently reports
+projects. At initialization, Composer validation/audit passed and npm audit reported
 8 development-tool advisories (7 high, 1 moderate) involving Vite/esbuild and the
 Tailwind/plugin glob dependencies; npm's suggested fixes include major version
 changes. These build tools are not included in the production release. Evaluate

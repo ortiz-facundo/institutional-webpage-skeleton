@@ -18,7 +18,34 @@ and downstream layouts. No homepage design is authorized during initialization.
 - Do not weaken CSRF, validation, rate limiting, honeypots or escaping while
   customizing markup. Keep test-only routes absent from dev/prod.
 - Never copy local secrets, generated files or inherited backoffice modules into
-  new downstreams. Use the initializer and inspect its source-baseline metadata.
+  new downstreams. Review inherited code and establish the Git tag baseline.
 - Keep en/es contact translation catalogs aligned.
 - Shared improvements belong in the institutional skeleton. Company-specific
   work stays downstream; tell the owner when a shared fix needs propagation.
+
+## Mandatory Git and Engram procedure
+
+- This is the public upstream, using SCI Gestión's maintenance model. The
+  backoffice skeleton is a historical ancestor, not the websites' direct parent.
+- Follow `BRANCHING.md`: downstreams use remote `skeleton`, tag `skeleton-sync`
+  and oldest-first bounded cherry-picks. Never merge/rebase full history.
+  Record applied/omitted SHAs, verify, then advance to the reviewed endpoint.
+  Cherry-picks and tag mutations require explicit authorization like commits.
+- `SKELETON_BASELINE.json` is legacy initializer output, not sync state.
+- Reusable downstream contact/runtime/frontend/deployment changes are proposed
+  in Engram under their originating project. Do not propose company branding,
+  business data or changes received from this skeleton.
+- Proposal: type `proposal`, title `Skeleton proposal: <feature>`, topic key
+  `skeleton-proposal/<slug>`. Content: `**State**: pending`, `**What**`,
+  `**Why generic**` (target `institutional-webpage-skeleton`), `**Commits**`
+  (SHAs or `uncommitted`), `**Where**`. BRANCHING supplies the full template.
+- Search proposals across projects, read full observations and filter pending
+  items by institutional target. Review decisions with the owner; inspect the
+  source, generalize accepted changes, verify and include
+  `Source: <originating-downstream>` in the authorized upstream commit.
+- Use mem_update on the original proposal: `implemented (skeleton <sha>)` only
+  after a verified commit exists, or `discarded (<reason>)` after rejection.
+  Uncommitted implementation stays pending; add source SHAs when available.
+- Tell the owner which websites need propagation. Source downstreams verify and
+  omit represented originals; others review the new upstream commit. Do not
+  automatically sync downstreams. Record outcomes in Engram before delivery.

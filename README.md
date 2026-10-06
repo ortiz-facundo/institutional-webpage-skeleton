@@ -1,4 +1,4 @@
-# Symfony Institutional Skeleton
+# Institutional Webpage Skeleton
 
 Reusable **public-only** institutional website foundation: Symfony 7.4, PHP 8.4,
 Apache, Twig, Vite 5 and Tailwind 3.4. The homepage is intentionally empty.
@@ -106,13 +106,22 @@ python3 scripts/create-website.py /path/to/company/website \
   --http-port 8060 --mailpit-port 8065 --vite-port 5176
 ```
 
-The initializer preserves Git ancestry and copies the current source snapshot,
-including uncommitted scaffold work. It excludes ignored dependencies, builds,
-secrets and caches; refuses nonempty destinations; sets independent ports;
-creates a random local secret; and records source hashes in
-`SKELETON_BASELINE.json`. It never stages, commits or pushes. Install dependencies
-and build assets in the generated project using the same setup commands.
+Use a reviewed, clean, committed institutional source when creating another
+website. The initializer preserves Git ancestry, copies source files, excludes
+ignored dependencies/builds/secrets/caches, refuses nonempty destinations, sets
+independent ports and creates a random local secret. It never stages, commits
+or pushes. Its legacy JSON metadata is not synchronization state; establish a
+reviewed `skeleton-sync` Git tag separately as described in `BRANCHING.md`.
+Install dependencies and build assets using the same setup commands.
 
 Configure company name/metadata/assets in `config/site.yaml`, palette in
 `assets/brand.js`, and mail settings in local overrides. Mount the form only when
-designing the homepage. See `BRANCHING.md` for the first-commit baseline caveat.
+designing the homepage.
+
+## Shared-code maintenance
+
+Follow `BRANCHING.md` and `AGENTS.md`: forward updates use the `skeleton` remote,
+`skeleton-sync` tag and bounded cherry-picks. Reusable downstream improvements
+are saved as structured Engram proposals and reviewed here. Generalized commits
+carry `Source: <downstream>`; company branding stays downstream. Git mutations
+require explicit authorization.
