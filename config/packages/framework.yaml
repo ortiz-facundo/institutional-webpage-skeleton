@@ -1,13 +1,25 @@
-# see https://symfony.com/doc/current/reference/configuration/framework.html
 framework:
     secret: '%env(APP_SECRET)%'
-
-    # Note that the session will be started ONLY if you read or write from it.
-    session: true
-
-    #esi: true
-    #fragments: true
-
+    default_locale: '%env(DEFAULT_LOCALE)%'
+    session:
+        cookie_secure: auto
+        cookie_samesite: lax
+    form: true
+    csrf_protection:
+        stateless_token_ids: [contact_form]
+    validation:
+        email_validation_mode: html5
+    translator:
+        default_path: '%kernel.project_dir%/translations'
+        fallbacks: [en]
+    router:
+        default_uri: '%env(PUBLIC_URL)%'
+    rate_limiter:
+        contact_form:
+            policy: sliding_window
+            limit: 5
+            interval: '15 minutes'
+            cache_pool: cache.rate_limiter
 when@test:
     framework:
         test: true

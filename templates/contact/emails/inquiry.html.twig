@@ -1,0 +1,13 @@
+<!DOCTYPE html>
+<html lang="{{ app.request ? app.request.locale : 'en' }}">
+<body>
+    <h1>{{ 'contact.mail.heading'|trans({'%company%': company_name}) }}</h1>
+    <dl>
+        <dt>{{ 'contact.name'|trans }}</dt><dd>{{ inquiry.name }}</dd>
+        <dt>{{ 'contact.email'|trans }}</dt><dd>{{ inquiry.email }}</dd>
+        {% if inquiry.phone %}<dt>{{ 'contact.phone'|trans }}</dt><dd>{{ inquiry.phone }}</dd>{% endif %}
+    </dl>
+    <h2>{{ 'contact.message'|trans }}</h2>
+    <p style="white-space: pre-wrap">{{ inquiry.message }}</p>
+</body>
+</html>

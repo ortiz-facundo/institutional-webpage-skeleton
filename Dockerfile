@@ -10,7 +10,6 @@ RUN set -eux; \
         git \
         unzip \
         libicu-dev \
-        default-libmysqlclient-dev \
         libzip-dev \
         zlib1g-dev \
         pkg-config; \
@@ -18,10 +17,8 @@ RUN set -eux; \
 
 RUN set -eux; \
     docker-php-ext-install \
-        bcmath \
         intl \
         opcache \
-        pdo_mysql \
         zip; \
     pecl install apcu; \
     docker-php-ext-enable apcu

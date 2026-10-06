@@ -1,7 +1,11 @@
 twig:
     file_name_pattern: '*.twig'
-    form_themes: ['form/theme.html.twig']
-
+    globals:
+        site_name: '%site.name%'
+        site_description: '%site.description%'
+        site_logo: '%site.logo%'
+        site_mark: '%site.mark%'
+        site_favicon: '%site.favicon%'
 when@test:
     twig:
         strict_variables: true

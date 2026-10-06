@@ -1,0 +1,9 @@
+{{ 'contact.mail.heading'|trans({'%company%': company_name}) }}
+
+{{ 'contact.name'|trans }}: {{ inquiry.name }}
+{{ 'contact.email'|trans }}: {{ inquiry.email }}
+{% if inquiry.phone %}{{ 'contact.phone'|trans }}: {{ inquiry.phone }}
+{% endif %}
+
+{{ 'contact.message'|trans }}:
+{{ inquiry.message }}

@@ -1,24 +1,15 @@
 {
-  "name": "symfony-backoffice-skeleton",
+  "name": "symfony-institutional-skeleton",
   "version": "1.0.0",
   "private": true,
-  "description": "Symfony backoffice skeleton — reusable RBAC, auth, i18n, and CRUD base for downstream projects.",
+  "description": "Reusable institutional website frontend",
   "type": "module",
-  "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "watch": "vite build --watch",
-    "preview": "vite preview"
-  },
+  "scripts": {"dev": "vite", "build": "vite build", "preview": "vite preview"},
   "devDependencies": {
     "autoprefixer": "^10.5.0",
     "postcss": "^8.5.15",
     "tailwindcss": "^3.4.19",
     "vite": "^5.4.21",
     "vite-plugin-symfony": "^8.2.4"
-  },
-  "dependencies": {
-    "cropperjs": "^1.6.3",
-    "sortablejs": "^1.15.7"
   }
 }

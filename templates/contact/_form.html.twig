@@ -1,0 +1,18 @@
+{# Unmounted by default. HomeController already supplies contact_form. #}
+<section id="contact" aria-labelledby="contact-title">
+    <h2 id="contact-title">{{ 'contact.title'|trans }}</h2>
+    {% for key in app.flashes('contact_success') %}
+        <p role="status">{{ key|trans }}</p>
+    {% endfor %}
+    {% for key in app.flashes('contact_error') %}
+        <p role="alert">{{ key|trans }}</p>
+    {% endfor %}
+    {{ form_start(contact_form, {action: path('contact_submit'), attr: {class: 'space-y-4'}}) }}
+        {{ form_row(contact_form.name) }}
+        {{ form_row(contact_form.email) }}
+        {{ form_row(contact_form.phone) }}
+        {{ form_row(contact_form.message) }}
+        <div class="hidden" aria-hidden="true">{{ form_widget(contact_form.hp_url_a8f3c) }}</div>
+        <button type="submit" class="rounded-md bg-primary px-4 py-2 text-white hover:bg-primary-600">{{ 'contact.submit'|trans }}</button>
+    {{ form_end(contact_form) }}
+</section>

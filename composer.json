@@ -1,6 +1,6 @@
 {
-    "name": "app/symfony-backoffice-skeleton",
-    "description": "Symfony backoffice skeleton — reusable RBAC, auth, i18n, and CRUD base for downstream projects.",
+    "name": "app/symfony-institutional-skeleton",
+    "description": "Public institutional website foundation with Twig, Vite and contact mailing.",
     "type": "project",
     "license": "proprietary",
     "minimum-stability": "stable",
@@ -9,82 +9,41 @@
         "php": ">=8.4",
         "ext-ctype": "*",
         "ext-iconv": "*",
-        "doctrine/doctrine-bundle": "^3.2",
-        "doctrine/doctrine-migrations-bundle": "^4.0",
-        "doctrine/orm": "^3.6",
-        "minishlink/web-push": "^9.0",
         "pentatrion/vite-bundle": "^8.2",
-        "symfony/apache-pack": "*",
+        "symfony/asset": "7.4.*",
         "symfony/console": "7.4.*",
         "symfony/dotenv": "7.4.*",
         "symfony/flex": "^2",
         "symfony/form": "7.4.*",
         "symfony/framework-bundle": "7.4.*",
         "symfony/mailer": "7.4.*",
-        "symfony/maker-bundle": "^1",
         "symfony/monolog-bundle": "^4.0",
         "symfony/rate-limiter": "7.4.*",
         "symfony/runtime": "7.4.*",
-        "symfony/security-bundle": "7.4.*",
+        "symfony/security-csrf": "7.4.*",
         "symfony/translation": "7.4.*",
+        "symfony/twig-bundle": "7.4.*",
         "symfony/validator": "7.4.*",
         "symfony/yaml": "7.4.*",
-        "twig/twig": "^3.27",
-        "vich/uploader-bundle": "^2.10"
-    },
-    "config": {
-        "allow-plugins": {
-            "php-http/discovery": true,
-            "symfony/flex": true,
-            "symfony/runtime": true
-        },
-        "bump-after-update": true,
-        "sort-packages": true
-    },
-    "autoload": {
-        "psr-4": {
-            "App\\": "src/"
-        }
-    },
-    "autoload-dev": {
-        "psr-4": {
-            "App\\Tests\\": "tests/"
-        }
-    },
-    "replace": {
-        "symfony/polyfill-ctype": "*",
-        "symfony/polyfill-iconv": "*",
-        "symfony/polyfill-php72": "*",
-        "symfony/polyfill-php73": "*",
-        "symfony/polyfill-php74": "*",
-        "symfony/polyfill-php80": "*",
-        "symfony/polyfill-php81": "*",
-        "symfony/polyfill-php82": "*"
-    },
-    "scripts": {
-        "auto-scripts": {
-            "cache:clear": "symfony-cmd",
-            "assets:install %PUBLIC_DIR%": "symfony-cmd"
-        },
-        "post-install-cmd": [
-            "@auto-scripts"
-        ],
-        "post-update-cmd": [
-            "@auto-scripts"
-        ]
-    },
-    "conflict": {
-        "symfony/symfony": "*"
-    },
-    "extra": {
-        "symfony": {
-            "allow-contrib": false,
-            "require": "7.4.*"
-        }
+        "twig/twig": "^3.27"
     },
     "require-dev": {
-        "doctrine/doctrine-fixtures-bundle": "*",
-        "symfony/stopwatch": "7.4.*",
-        "symfony/web-profiler-bundle": "7.4.*"
-    }
+        "phpunit/phpunit": "^11.5",
+        "symfony/browser-kit": "7.4.*",
+        "symfony/css-selector": "7.4.*"
+    },
+    "autoload": {"psr-4": {"App\\": "src/"}},
+    "autoload-dev": {"psr-4": {"App\\Tests\\": "tests/"}},
+    "config": {
+        "platform": {"php": "8.4.0"},
+        "allow-plugins": {"symfony/flex": true, "symfony/runtime": true},
+        "sort-packages": true
+    },
+    "scripts": {
+        "auto-scripts": {"cache:clear": "symfony-cmd", "assets:install %PUBLIC_DIR%": "symfony-cmd"},
+        "post-install-cmd": ["@auto-scripts"],
+        "post-update-cmd": ["@auto-scripts"]
+    },
+    "conflict": {"symfony/symfony": "*"},
+    "extra": {"symfony": {"allow-contrib": false, "require": "7.4.*"}}
 }

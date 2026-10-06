@@ -1,0 +1,16 @@
+contact:
+    title: Contact us
+    name: Name
+    email: Email
+    phone: Phone (optional)
+    message: Message
+    submit: Send inquiry
+    success: Thank you. Your inquiry has been sent.
+    error:
+        rate_limit: Too many submissions. Please try again later.
+        csrf: Your submission could not be verified. Reload the page and try again.
+        invalid: Please check the required fields and their lengths.
+        delivery: Your inquiry could not be sent. Please try again later.
+    mail:
+        subject: 'Website inquiry — %company%'
+        heading: 'New inquiry for %company%'

@@ -1,19 +1,10 @@
 .git
-.github
-.idea
-.vscode
-.opencode
-node_modules
 vendor
+node_modules
 var
+dist
 public/build
-*.log
-.DS_Store
+*.zip
 .env.local
 .env.*.local
-# Raw source images live in assets/images/ — they are processed by Vite
-# (hashed, optimized) at build time, so we don't need them in the image
-# build context. They reach the container only through the dev bind mount.
-assets/images
-INFRASTRUCTURE_PLAN.md
-README.md
+__pycache__

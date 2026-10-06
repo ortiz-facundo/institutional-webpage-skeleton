@@ -1,0 +1,7 @@
+# Company-specific presentation only; keep generic behavior in shared files.
+parameters:
+    site.name: 'Institutional Website'
+    site.description: ''
+    site.logo: ''
+    site.mark: ''
+    site.favicon: ''

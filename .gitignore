@@ -1,27 +1,21 @@
-node_modules/
-.DS_Store
-.vscode/
-.idea/
-
-# cPanel deploy build artefacts (see scripts/build-cpanel-zip.sh).
+/vendor/
+/var/
+/node_modules/
+/public/build/
+/public/bundles/
 /dist/
-/symfony-backoffice-skeleton-cpanel.zip
-
-###> symfony/framework-bundle ###
+/*-cpanel.zip
 /.env.local
 /.env.local.php
 /.env.*.local
 /config/secrets/prod/prod.decrypt.private.php
-/public/bundles/
-/var/
-/vendor/
-###< symfony/framework-bundle ###
+/.idea/
+/.vscode/
+.DS_Store
+__pycache__/
+/config/reference.php
 
-###> symfony/asset ###
-/public/build/
-###< symfony/asset ###
-
-# Self-service avatar uploads (vich/uploader-bundle) — keep the
-# directory tracked, ignore its contents.
-/public/uploads/avatars/*
-!/public/uploads/avatars/.gitkeep
+###> phpunit/phpunit ###
+/phpunit.xml
+/.phpunit.cache/
+###< phpunit/phpunit ###

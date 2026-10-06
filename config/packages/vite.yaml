@@ -1,7 +1,6 @@
 pentatrion_vite:
-    public_directory: 'public'
-    build_directory: 'build'
+    public_directory: public
+    build_directory: build
     absolute_url: false
-    throw_on_missing_entry: false
+    throw_on_missing_entry: true
     throw_on_missing_asset: true
-    preload: 'link-tag'

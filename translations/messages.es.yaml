@@ -1,0 +1,16 @@
+contact:
+    title: Contáctanos
+    name: Nombre
+    email: Correo electrónico
+    phone: Teléfono (opcional)
+    message: Mensaje
+    submit: Enviar consulta
+    success: Gracias. Tu consulta ha sido enviada.
+    error:
+        rate_limit: Has enviado demasiadas consultas. Inténtalo más tarde.
+        csrf: No pudimos verificar tu envío. Recarga la página e inténtalo de nuevo.
+        invalid: Revisa los campos obligatorios y su longitud.
+        delivery: No pudimos enviar tu consulta. Inténtalo más tarde.
+    mail:
+        subject: 'Consulta web — %company%'
+        heading: 'Nueva consulta para %company%'

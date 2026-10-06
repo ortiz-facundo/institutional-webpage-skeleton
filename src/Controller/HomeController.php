@@ -1,26 +1,21 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Controller;
 
+use App\Form\ContactFormType;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
-use Symfony\Component\HttpFoundation\RedirectResponse;
+use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 
 final class HomeController extends AbstractController
 {
-    /**
-     * The skeleton ships as a backoffice-only application: there is no
-     * public homepage. The root URL redirects to the login page so that
-     * unauthenticated visitors land somewhere useful while making the
-     * "no public site" intent explicit.
-     *
-     * Downstream projects that want a public homepage should override
-     * this controller (or its route) instead of editing this one — that
-     * way the skeleton stays clean for future rebase flows.
-     */
-    #[Route('/', name: 'home')]
-    public function __invoke(): RedirectResponse
+    #[Route('/', name: 'home', methods: ['GET'])]
+    public function __invoke(): Response
     {
-        return $this->redirectToRoute('security_login');
+        return $this->render('home/index.html.twig', [
+            'contact_form' => $this->createForm(ContactFormType::class)->createView(),
+        ]);
     }
 }

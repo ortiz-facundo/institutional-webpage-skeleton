@@ -1,9 +1,3 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
-/* Tailwind's utilities can't target the ::backdrop pseudo-element, so
-   every <dialog data-app-dialog> in this app is styled here directly. */
-dialog[data-app-dialog]::backdrop {
-    background: rgb(28 25 23 / 0.5); /* stone-900/50 */
-}

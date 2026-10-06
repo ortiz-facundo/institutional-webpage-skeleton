@@ -3,12 +3,15 @@
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
-        <title>{% block title %}Skeleton{% endblock %}</title>
-        <link rel="icon" type="image/png" href="{{ asset('skeleton-logo.png') }}">
+        <title>{% block title %}{{ site_name }}{% endblock %}</title>
+        {% block metadata %}
+            {% if site_description %}<meta name="description" content="{{ site_description }}">{% endif %}
+        {% endblock %}
+        {% if site_favicon %}<link rel="icon" href="{{ asset(site_favicon) }}">{% endif %}
         {{ vite_entry_link_tags('app') }}
         {% block stylesheets %}{% endblock %}
     </head>
-    <body>
+    <body class="{% block body_class %}bg-background text-foreground{% endblock %}">
         {% block body %}{% endblock %}
         {{ vite_entry_script_tags('app') }}
         {% block javascripts %}{% endblock %}

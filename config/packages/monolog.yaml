@@ -1,57 +1,18 @@
 monolog:
-    channels:
-        - deprecation # Deprecations are logged in the dedicated "deprecation" channel when it exists
-        - audit       # Privileged-action audit trail (impersonation, role grants, etc.)
-
-when@dev:
-    monolog:
-        handlers:
-            main:
-                type: stream
-                path: "%kernel.logs_dir%/%kernel.environment%.log"
-                level: debug
-                channels: ["!event", "!audit"]
-            audit:
-                type: stream
-                path: "%kernel.logs_dir%/audit.log"
-                level: info
-                channels: ["audit"]
-            console:
-                type: console
-                process_psr_3_messages: false
-                channels: ["!event", "!doctrine", "!console", "!audit"]
-
+    channels: [contact]
+    handlers:
+        main:
+            type: stream
+            path: '%kernel.logs_dir%/%kernel.environment%.log'
+            level: debug
+            channels: ['!event', '!contact']
+        contact:
+            type: stream
+            path: '%kernel.logs_dir%/contact.log'
+            level: info
+            channels: [contact]
 when@prod:
     monolog:
         handlers:
             main:
-                type: fingers_crossed
-                action_level: error
-                handler: nested
-                excluded_http_codes: [404, 405]
-                channels: ["!event", "!audit"]
-            nested:
-                type: stream
-                path: php://stderr
-                level: debug
-                formatter: monolog.formatter.json
-            audit:
-                type: stream
-                path: php://stderr
-                level: info
-                channels: ["audit"]
-                formatter: monolog.formatter.json
-
-when@test:
-    monolog:
-        handlers:
-            main:
-                type: fingers_crossed
-                action_level: error
-                handler: nested
-                excluded_http_codes: [404, 405]
-                channels: ["!event", "!audit"]
-            nested:
-                type: stream
-                path: "%kernel.logs_dir%/%kernel.environment%.log"
-                level: debug
+                level: warning

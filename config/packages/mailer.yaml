@@ -1,3 +1,5 @@
 framework:
     mailer:
-        dsn: '%env(MAILER_DSN)%'
+        transports:
+            contact: '%env(CONTACT_MAIL_DSN)%'
+        message_bus: false
