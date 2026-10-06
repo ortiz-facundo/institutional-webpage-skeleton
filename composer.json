@@ -1,5 +1,5 @@
 {
-    "name": "app/symfony-institutional-skeleton",
+    "name": "app/institutional-webpage-skeleton",
     "description": "Public institutional website foundation with Twig, Vite and contact mailing.",
     "type": "project",
     "license": "proprietary",
